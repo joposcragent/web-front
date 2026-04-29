@@ -1,0 +1,30 @@
+:root {
+  --app-content-max-width: 1400px;
+  --app-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--app-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+.app-content-inner {
+  max-width: var(--app-content-max-width);
+  margin: 0 auto;
+  padding: 2rem 2.5rem 3rem;
+}
+
+.v-navigation-drawer .v-list-item-title {
+  letter-spacing: 0.01em;
+}
+
+.v-data-table .v-data-table__th {
+  font-weight: 500 !important;
+}
