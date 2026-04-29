@@ -2,9 +2,14 @@
 set -euo pipefail
 
 # Сборка образа: тег <IMAGE_NAME>:<версия>, затем тот же образ как <IMAGE_NAME>:latest.
-# Версия: переменная IMAGE_VERSION, иначе поле version из package.json.
-# Имя образа: переменная IMAGE_NAME, иначе joposcragent/web-front.
-# Доп. аргументы передаются в docker build (например --build-arg VITE_...=...).
+#
+# Переменные окружения (все опционально):
+#   IMAGE_NAME, IMAGE_VERSION — имя образа и тег версии
+#   NODE_VERSION — базовый образ Node (по умолчанию 22)
+#   VITE_SETTINGS_MANAGER_BASE_URL, VITE_JOB_POSTINGS_CRUD_BASE_URL, VITE_FLOWER_BASE_URL —
+#     URL для axios / Flower (вшиваются в бандл на этапе сборки)
+#
+# Дополнительные аргументы передаются в docker build после наших --build-arg (можно переопределить VITE_*).
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
@@ -14,7 +19,19 @@ image_name="${IMAGE_NAME:-joposcragent/web-front}"
 version="${IMAGE_VERSION:-$(node -p "require('./package.json').version")}"
 tag_versioned="${image_name}:${version}"
 
-docker build -t "${tag_versioned}" "$@" .
+node_version="${NODE_VERSION:-22}"
+vite_settings="${VITE_SETTINGS_MANAGER_BASE_URL:-http://localhost:8081}"
+vite_crud="${VITE_JOB_POSTINGS_CRUD_BASE_URL:-http://localhost:8082}"
+vite_flower="${VITE_FLOWER_BASE_URL:-http://localhost:5555}"
+
+docker build \
+	--build-arg "NODE_VERSION=${node_version}" \
+	--build-arg "VITE_SETTINGS_MANAGER_BASE_URL=${vite_settings}" \
+	--build-arg "VITE_JOB_POSTINGS_CRUD_BASE_URL=${vite_crud}" \
+	--build-arg "VITE_FLOWER_BASE_URL=${vite_flower}" \
+	-t "${tag_versioned}" \
+	"$@" \
+	.
 docker tag "${tag_versioned}" "${image_name}:latest"
 
 printf 'Образ: %s и %s:latest\n' "${tag_versioned}" "${image_name}"
