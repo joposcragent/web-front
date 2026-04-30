@@ -256,12 +256,16 @@ function onResponseInput(row: JobPostingsItem, next: ResponseStatus | null) {
       </template>
 
       <template #item.title="{ item }">
-        <div class="d-flex align-center flex-wrap ga-2">
-          <span>{{ item.title }}</span>
-          <v-btn size="small" variant="tonal" @click="openContent(item.content)">
-            Показать текст
-          </v-btn>
-        </div>
+        <v-btn
+          variant="text"
+          color="primary"
+          class="job-title-btn text-body-2 px-0 text-start"
+          min-width="0"
+          max-width="100%"
+          @click="openContent(item.content)"
+        >
+          {{ item.title }}
+        </v-btn>
       </template>
 
       <template #item.url="{ item }">
@@ -327,6 +331,13 @@ function onResponseInput(row: JobPostingsItem, next: ResponseStatus | null) {
 </template>
 
 <style scoped>
+.job-title-btn {
+  height: auto;
+  min-height: auto;
+  white-space: normal;
+  word-break: break-word;
+}
+
 .content-dialog__body {
   max-height: 50vh;
   overflow-y: auto;
