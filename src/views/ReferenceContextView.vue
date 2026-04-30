@@ -113,8 +113,12 @@ onMounted(load)
 }
 
 .reference-editor-wrap {
-  flex: 0 0 30%;
+  /* Не задавать flex-basis в %: иначе ручка resize не меняет высоту (бьётся с flex). */
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: 100%;
   min-height: 12rem;
+  height: 30%;
   max-height: min(85vh, 100%);
   resize: vertical;
   overflow: hidden;
