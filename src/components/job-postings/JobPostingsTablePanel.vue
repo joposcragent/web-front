@@ -192,6 +192,16 @@ function onTableUpdate(opt: { sortBy?: { key: string; order: boolean | 'asc' | '
   }))
 }
 
+function evalLabel(status: EvaluationStatus | null | undefined): string {
+  if (status == null) return '—'
+  return EVALUATION_OPTIONS.find((o) => o.value === status)?.title ?? status
+}
+
+function responseLabel(status: ResponseStatus | null | undefined): string {
+  if (status == null) return '—'
+  return RESPONSE_OPTIONS.find((o) => o.value === status)?.title ?? status
+}
+
 function onEvalInput(row: JobPostingsItem, next: EvaluationStatus | null) {
   if (next == null) return
   const prev = row.evaluationStatus ?? null
@@ -275,31 +285,57 @@ function onResponseInput(row: JobPostingsItem, next: ResponseStatus | null) {
       </template>
 
       <template #item.evaluationStatus="{ item }">
-        <v-select
-          :model-value="item.evaluationStatus ?? undefined"
-          :items="EVALUATION_OPTIONS"
-          item-title="title"
-          item-value="value"
-          density="compact"
-          variant="outlined"
-          hide-details
-          style="max-width: 160px"
-          @update:model-value="(v) => onEvalInput(item, v as EvaluationStatus)"
-        />
+        <v-menu location="bottom start" :close-on-content-click="true">
+          <template #activator="{ props: menuActivatorProps }">
+            <v-btn
+              v-bind="menuActivatorProps"
+              variant="text"
+              density="compact"
+              class="status-trigger status-trigger--eval text-body-2"
+              min-width="0"
+            >
+              <span class="text-truncate">{{ evalLabel(item.evaluationStatus) }}</span>
+              <v-icon class="ml-1 flex-shrink-0" size="small">mdi-menu-down</v-icon>
+            </v-btn>
+          </template>
+          <v-list density="compact" class="py-0" min-width="160">
+            <v-list-item
+              v-for="opt in EVALUATION_OPTIONS"
+              :key="opt.value"
+              :active="opt.value === item.evaluationStatus"
+              @click="onEvalInput(item, opt.value)"
+            >
+              <v-list-item-title>{{ opt.title }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
       </template>
 
       <template #item.responseStatus="{ item }">
-        <v-select
-          :model-value="item.responseStatus"
-          :items="RESPONSE_OPTIONS"
-          item-title="title"
-          item-value="value"
-          density="compact"
-          variant="outlined"
-          hide-details
-          style="max-width: 180px"
-          @update:model-value="(v) => onResponseInput(item, v as ResponseStatus)"
-        />
+        <v-menu location="bottom start" :close-on-content-click="true">
+          <template #activator="{ props: menuActivatorProps }">
+            <v-btn
+              v-bind="menuActivatorProps"
+              variant="text"
+              density="compact"
+              class="status-trigger status-trigger--response text-body-2"
+              min-width="0"
+            >
+              <span class="text-truncate">{{ responseLabel(item.responseStatus) }}</span>
+              <v-icon class="ml-1 flex-shrink-0" size="small">mdi-menu-down</v-icon>
+            </v-btn>
+          </template>
+          <v-list density="compact" class="py-0" min-width="180">
+            <v-list-item
+              v-for="opt in RESPONSE_OPTIONS"
+              :key="opt.value"
+              :active="opt.value === item.responseStatus"
+              @click="onResponseInput(item, opt.value)"
+            >
+              <v-list-item-title>{{ opt.title }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
       </template>
 
       <template #item.relevance="{ item }">
@@ -336,6 +372,20 @@ function onResponseInput(row: JobPostingsItem, next: ResponseStatus | null) {
   min-height: auto;
   white-space: normal;
   word-break: break-word;
+}
+
+.status-trigger {
+  justify-content: flex-start;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.status-trigger--eval {
+  max-width: 168px;
+}
+
+.status-trigger--response {
+  max-width: 188px;
 }
 
 .content-dialog__body {
