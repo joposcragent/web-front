@@ -13,6 +13,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Дашборд' },
       },
       {
+        path: 'vacancies',
+        name: 'vacancies',
+        component: () => import('@/views/VacanciesView.vue'),
+        meta: { title: 'Вакансии' },
+      },
+      {
         path: 'orchestrator',
         name: 'orchestrator',
         component: () => import('@/views/OrchestratorView.vue'),

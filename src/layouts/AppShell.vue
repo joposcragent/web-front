@@ -47,6 +47,7 @@ const navInlineStyle = computed(() => {
         <v-list density="comfortable" class="bg-transparent pa-0 flex-grow-1" nav>
           <v-list-subheader class="text-body-1 font-weight-medium px-0 mb-1">Главная</v-list-subheader>
           <v-list-item to="/" title="Дашборд" rounded="lg" />
+          <v-list-item to="/vacancies" title="Вакансии" rounded="lg" />
           <v-list-item
             v-if="flowerBaseUrl"
             to="/orchestrator"

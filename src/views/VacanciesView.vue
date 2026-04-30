@@ -4,7 +4,7 @@ import JobPostingsTablePanel from '@/components/job-postings/JobPostingsTablePan
 
 <template>
   <div>
-    <h1 class="text-h4 font-weight-regular mb-8">Дашборд</h1>
-    <JobPostingsTablePanel preset="dashboard" />
+    <h1 class="text-h4 font-weight-regular mb-8">Вакансии</h1>
+    <JobPostingsTablePanel preset="all" />
   </div>
 </template>
