@@ -6,8 +6,8 @@ set -euo pipefail
 # Переменные окружения (все опционально):
 #   IMAGE_NAME, IMAGE_VERSION — имя образа и тег версии
 #   NODE_VERSION — базовый образ Node (по умолчанию 22)
-#   VITE_SETTINGS_MANAGER_BASE_URL, VITE_JOB_POSTINGS_CRUD_BASE_URL, VITE_FLOWER_BASE_URL —
-#     URL для axios / Flower (вшиваются в бандл на этапе сборки)
+#   VITE_SETTINGS_MANAGER_BASE_URL, VITE_JOB_POSTINGS_CRUD_BASE_URL — по умолчанию пустые
+#     (axios ходит на тот же origin; nginx проксирует на бэкенды). VITE_FLOWER_BASE_URL — ссылка на Flower.
 #
 # Дополнительные аргументы передаются в docker build после наших --build-arg (можно переопределить VITE_*).
 
@@ -20,8 +20,8 @@ version="${IMAGE_VERSION:-$(node -p "require('./package.json').version")}"
 tag_versioned="${image_name}:${version}"
 
 node_version="${NODE_VERSION:-22}"
-vite_settings="${VITE_SETTINGS_MANAGER_BASE_URL:-http://localhost:8081}"
-vite_crud="${VITE_JOB_POSTINGS_CRUD_BASE_URL:-http://localhost:8082}"
+vite_settings="${VITE_SETTINGS_MANAGER_BASE_URL:-}"
+vite_crud="${VITE_JOB_POSTINGS_CRUD_BASE_URL:-}"
 vite_flower="${VITE_FLOWER_BASE_URL:-http://localhost:5555}"
 
 docker build \

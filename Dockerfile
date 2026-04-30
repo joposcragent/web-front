@@ -9,9 +9,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# Vite вшивает VITE_* на этапе сборки; при необходимости передайте --build-arg
-ARG VITE_SETTINGS_MANAGER_BASE_URL=http://localhost:8081
-ARG VITE_JOB_POSTINGS_CRUD_BASE_URL=http://localhost:8082
+# Vite вшивает VITE_* на этапе сборки. Пустые API URL — same-origin через nginx (см. nginx.conf).
+ARG VITE_SETTINGS_MANAGER_BASE_URL=
+ARG VITE_JOB_POSTINGS_CRUD_BASE_URL=
 ARG VITE_FLOWER_BASE_URL=http://localhost:5555
 ENV VITE_SETTINGS_MANAGER_BASE_URL=${VITE_SETTINGS_MANAGER_BASE_URL}
 ENV VITE_JOB_POSTINGS_CRUD_BASE_URL=${VITE_JOB_POSTINGS_CRUD_BASE_URL}
