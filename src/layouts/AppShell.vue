@@ -49,9 +49,7 @@ const navInlineStyle = computed(() => {
           <v-list-item to="/" title="Дашборд" rounded="lg" />
           <v-list-item
             v-if="flowerBaseUrl"
-            :href="flowerBaseUrl"
-            target="_blank"
-            rel="noopener noreferrer"
+            to="/orchestrator"
             title="Оркестратор"
             rounded="lg"
           />

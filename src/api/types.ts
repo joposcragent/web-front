@@ -14,7 +14,7 @@ export interface JobPostingsItem {
   contentVector?: number[] | null
   relevance?: number | null
   evaluationStatus?: EvaluationStatus | null
-  responseStatus?: ResponseStatus | null
+  responseStatus: ResponseStatus
   createdAt?: string | null
   updatedAt?: string | null
 }

@@ -13,6 +13,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Дашборд' },
       },
       {
+        path: 'orchestrator',
+        name: 'orchestrator',
+        component: () => import('@/views/OrchestratorView.vue'),
+        meta: { title: 'Оркестратор' },
+      },
+      {
         path: 'settings',
         redirect: '/settings/reference-context',
       },

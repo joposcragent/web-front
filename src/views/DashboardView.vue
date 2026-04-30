@@ -27,7 +27,6 @@ const PER_PAGE = [30, 50, 80, 130] as const
 const headers = [
   { title: 'Название', key: 'title', sortable: true },
   { title: 'URL', key: 'url', sortable: false },
-  { title: 'Текст', key: 'content', sortable: false },
   { title: 'Оценка', key: 'evaluationStatus', sortable: true },
   { title: 'Рассмотрение', key: 'responseStatus', sortable: true },
   { title: 'Релевантность', key: 'relevance', sortable: true },
@@ -96,11 +95,6 @@ const displayItems = computed(() => {
 const contentDialog = ref(false)
 const contentDialogText = ref('')
 
-function previewContent(text: string | null | undefined) {
-  if (!text) return '—'
-  return text.length <= 100 ? text : `${text.slice(0, 100)}…`
-}
-
 function openContent(text: string | null | undefined) {
   contentDialogText.value = text ?? ''
   contentDialog.value = true
@@ -111,8 +105,7 @@ function buildListParams(p: number, size: number) {
     page: p,
     size,
     evaluationStatus: ['RELEVANT'],
-    responseStatus: ['NEW'],
-    includeUnsetResponseStatus: true,
+    responseStatus: ['NEW', 'RESPONDED'],
   }
   if (titleDebounced.value.trim()) params.title = titleDebounced.value.trim()
   if (companyDebounced.value.trim()) params.company = companyDebounced.value.trim()
@@ -197,7 +190,7 @@ function onEvalInput(row: JobPostingsItem, next: EvaluationStatus | null) {
 
 function onResponseInput(row: JobPostingsItem, next: ResponseStatus | null) {
   if (next == null) return
-  const prev = row.responseStatus ?? null
+  const prev = row.responseStatus
   row.responseStatus = next
   void postResponse(row, next, () => {
     row.responseStatus = prev
@@ -252,16 +245,19 @@ function onResponseInput(row: JobPostingsItem, next: ResponseStatus | null) {
         </div>
       </template>
 
+      <template #item.title="{ item }">
+        <div class="d-flex align-center flex-wrap ga-2">
+          <span>{{ item.title }}</span>
+          <v-btn size="small" variant="tonal" @click="openContent(item.content)">
+            Показать текст
+          </v-btn>
+        </div>
+      </template>
+
       <template #item.url="{ item }">
         <a :href="item.url" target="_blank" rel="noopener noreferrer" class="text-decoration-none">{{
           item.url
         }}</a>
-      </template>
-
-      <template #item.content="{ item }">
-        <v-btn variant="text" class="text-none px-0" @click="openContent(item.content)">
-          {{ previewContent(item.content) }}
-        </v-btn>
       </template>
 
       <template #item.evaluationStatus="{ item }">
@@ -280,7 +276,7 @@ function onResponseInput(row: JobPostingsItem, next: ResponseStatus | null) {
 
       <template #item.responseStatus="{ item }">
         <v-select
-          :model-value="item.responseStatus ?? undefined"
+          :model-value="item.responseStatus"
           :items="RESPONSE_OPTIONS"
           item-title="title"
           item-value="value"
