@@ -13,6 +13,12 @@ interface ImportMetaEnv {
   readonly VITE_SETTINGS_MANAGER_BASE_URL: string
   readonly VITE_JOB_POSTINGS_CRUD_BASE_URL: string
   readonly VITE_FLOWER_BASE_URL: string
+  /**
+   * Базовый URL страницы поиска hh.ru без завершающего `?`.
+   * Полная ссылка в UI: `{VITE_HH_SEARCH_BASE_URL}?{query из БД}`.
+   * Если не задано при сборке — в коде используется значение по умолчанию.
+   */
+  readonly VITE_HH_SEARCH_BASE_URL?: string
   /** Только dev: цели proxy в vite.config.ts */
   readonly VITE_DEV_PROXY_SETTINGS_MANAGER?: string
   readonly VITE_DEV_PROXY_JOB_POSTINGS_CRUD?: string

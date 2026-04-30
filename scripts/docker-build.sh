@@ -8,6 +8,7 @@ set -euo pipefail
 #   NODE_VERSION — базовый образ Node (по умолчанию 22)
 #   VITE_SETTINGS_MANAGER_BASE_URL, VITE_JOB_POSTINGS_CRUD_BASE_URL — по умолчанию пустые
 #     (axios ходит на тот же origin; nginx проксирует на бэкенды). VITE_FLOWER_BASE_URL — ссылка на Flower.
+#   VITE_HH_SEARCH_BASE_URL — база для ссылок на hh.ru (по умолчанию https://hh.ru/search/vacancy).
 #
 # Дополнительные аргументы передаются в docker build после наших --build-arg (можно переопределить VITE_*).
 
@@ -23,12 +24,14 @@ node_version="${NODE_VERSION:-22}"
 vite_settings="${VITE_SETTINGS_MANAGER_BASE_URL:-}"
 vite_crud="${VITE_JOB_POSTINGS_CRUD_BASE_URL:-}"
 vite_flower="${VITE_FLOWER_BASE_URL:-http://localhost:5555}"
+vite_hh_search="${VITE_HH_SEARCH_BASE_URL:-https://hh.ru/search/vacancy}"
 
 docker build \
 	--build-arg "NODE_VERSION=${node_version}" \
 	--build-arg "VITE_SETTINGS_MANAGER_BASE_URL=${vite_settings}" \
 	--build-arg "VITE_JOB_POSTINGS_CRUD_BASE_URL=${vite_crud}" \
 	--build-arg "VITE_FLOWER_BASE_URL=${vite_flower}" \
+	--build-arg "VITE_HH_SEARCH_BASE_URL=${vite_hh_search}" \
 	-t "${tag_versioned}" \
 	"$@" \
 	.

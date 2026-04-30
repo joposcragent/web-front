@@ -23,6 +23,13 @@ function itemFor(type: RelevanceThresholdType): RelevanceThresholdItem | undefin
   return items.value.find((i) => i.type === type)
 }
 
+function displayThresholdDate(item: RelevanceThresholdItem | undefined): string {
+  if (!item) return '—'
+  const u = item.updatedAt?.trim()
+  if (u) return u
+  return item.createdAt?.trim() ?? '—'
+}
+
 function parse01(raw: string): number | null {
   const n = Number(raw.replace(',', '.'))
   if (Number.isNaN(n) || n < 0 || n > 1) return null
@@ -39,8 +46,8 @@ async function load() {
     const n = itemFor('NOTIFICATION')
     contentValue.value = c != null ? String(c.value) : ''
     notificationValue.value = n != null ? String(n.value) : ''
-    contentUpdated.value = c?.updatedAt ?? '—'
-    notificationUpdated.value = n?.updatedAt ?? '—'
+    contentUpdated.value = displayThresholdDate(c)
+    notificationUpdated.value = displayThresholdDate(n)
   } catch {
     errorMessage.value = 'Не удалось загрузить пороги'
   } finally {
@@ -56,7 +63,7 @@ async function saveType(type: RelevanceThresholdType, raw: string) {
   err.value = null
   const v = parse01(raw)
   if (v == null) {
-    fieldErr.value = 'Введите число от 0 до 1'
+    fieldErr.value = 'Введите число от 0,0 до 1,0'
     return
   }
   saving.value = true
@@ -86,13 +93,13 @@ onMounted(load)
       <h2 class="text-h6 font-weight-regular mb-6">Общий порог</h2>
       <v-text-field
         v-model="contentValue"
-        label="Значение (0–1)"
+        label="Значение (0,0–1,0)"
         variant="outlined"
         density="comfortable"
         class="mb-4"
         :error-messages="contentFieldError ?? undefined"
       />
-      <p class="text-body-2 text-medium-emphasis mb-4">Последнее изменение: {{ contentUpdated }}</p>
+      <p class="text-body-2 text-medium-emphasis mb-4">Обновлён / создан: {{ contentUpdated }}</p>
       <p v-if="contentError" class="text-error mb-2">{{ contentError }}</p>
       <v-btn color="primary" variant="flat" :loading="contentSaving" @click="saveType('CONTENT', contentValue)">
         Сохранить
@@ -103,13 +110,13 @@ onMounted(load)
       <h2 class="text-h6 font-weight-regular mb-6">Порог для уведомлений</h2>
       <v-text-field
         v-model="notificationValue"
-        label="Значение (0–1)"
+        label="Значение (0,0–1,0)"
         variant="outlined"
         density="comfortable"
         class="mb-4"
         :error-messages="notificationFieldError ?? undefined"
       />
-      <p class="text-body-2 text-medium-emphasis mb-4">Последнее изменение: {{ notificationUpdated }}</p>
+      <p class="text-body-2 text-medium-emphasis mb-4">Обновлён / создан: {{ notificationUpdated }}</p>
       <p v-if="notificationError" class="text-error mb-2">{{ notificationError }}</p>
       <v-btn
         color="primary"

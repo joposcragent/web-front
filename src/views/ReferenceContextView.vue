@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { settingsHttp } from '@/api/http'
 import type { ReferenceContext, ReferenceContextPersisted } from '@/api/types'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 const contextText = ref('')
 const vectorText = ref('')
@@ -61,27 +61,36 @@ async function save() {
   }
 }
 
+const contextDateDisplay = computed(() => {
+  const u = String(updatedAtDisplay.value ?? '').trim()
+  if (u && u !== '—') return u
+  const c = String(createdAtDisplay.value ?? '').trim()
+  if (c && c !== '—') return c
+  return '—'
+})
+
 onMounted(load)
 </script>
 
 <template>
-  <div>
+  <div class="reference-page">
     <h1 class="text-h4 font-weight-regular mb-8">Эталонный контекст</h1>
     <p v-if="errorMessage" class="text-error mb-4">{{ errorMessage }}</p>
 
     <v-progress-linear v-if="loading" indeterminate class="mb-4" />
 
-    <v-textarea
-      v-model="contextText"
-      label="Текст эталона"
-      variant="outlined"
-      rows="12"
-      auto-grow
-      class="mb-6"
-    />
+    <div class="reference-editor-wrap mb-6">
+      <v-textarea
+        v-model="contextText"
+        label="Текст эталона"
+        variant="outlined"
+        hide-details="auto"
+        class="reference-editor"
+      />
+    </div>
 
-    <p class="text-body-2 text-medium-emphasis mb-2">Дата изменения</p>
-    <p class="mb-6">{{ updatedAtDisplay }}</p>
+    <p class="text-body-2 text-medium-emphasis mb-2">Обновлён / создан</p>
+    <p class="mb-6">{{ contextDateDisplay }}</p>
 
     <p class="text-body-2 text-medium-emphasis mb-2">Вектор эталона</p>
     <v-sheet border rounded class="pa-4 mb-8 vector-scroll text-mono text-body-2">
@@ -95,6 +104,40 @@ onMounted(load)
 </template>
 
 <style scoped>
+.reference-page {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: calc(100vh - 8rem);
+  min-height: 24rem;
+}
+
+.reference-editor-wrap {
+  flex: 0 0 30%;
+  min-height: 12rem;
+  max-height: min(85vh, 100%);
+  resize: vertical;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.reference-editor {
+  flex: 1;
+  min-height: 0;
+}
+
+.reference-editor :deep(.v-field) {
+  height: 100%;
+}
+
+.reference-editor :deep(.v-field__input) {
+  min-height: 8rem;
+  max-height: 100%;
+  overflow-y: auto;
+  align-items: flex-start;
+}
+
 .vector-scroll {
   max-height: 240px;
   overflow: auto;

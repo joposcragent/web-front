@@ -3,6 +3,8 @@ import { settingsHttp } from '@/api/http'
 import type { SearchQueriesItem, SearchQueriesList } from '@/api/types'
 import { computed, onMounted, ref } from 'vue'
 
+const DEFAULT_HH_SEARCH_BASE = 'https://hh.ru/search/vacancy'
+
 const items = ref<SearchQueriesItem[]>([])
 const loading = ref(false)
 const listError = ref<string | null>(null)
@@ -22,9 +24,65 @@ const deleteError = ref<string | null>(null)
 const snackbar = ref(false)
 const snackbarText = ref('')
 
-function isValidHhUrl(url: string): boolean {
-  const u = url.trim()
-  return u.startsWith('https://hh.ru') || u.startsWith('https://hh.ru/')
+function hhSearchBaseUrl(): string {
+  const fromEnv = import.meta.env.VITE_HH_SEARCH_BASE_URL?.trim()
+  const b = fromEnv && fromEnv.length > 0 ? fromEnv : DEFAULT_HH_SEARCH_BASE
+  return b.replace(/[/?]$/, '')
+}
+
+function fullHhSearchUrl(stored: string): string {
+  const s = stored.trim()
+  if (!s) return '#'
+  if (/^https?:\/\//i.test(s)) return s
+  const q = s.replace(/^\?/, '')
+  return `${hhSearchBaseUrl()}?${q}`
+}
+
+function previewQueryCell(stored: string, max = 100): string {
+  if (stored.length <= max) return stored
+  return `${stored.slice(0, max)}…`
+}
+
+function storedQueryComparable(stored: string): string {
+  const t = stored.trim()
+  if (/^https?:\/\//i.test(t)) {
+    try {
+      const u = new URL(t)
+      return u.search ? u.search.slice(1) : ''
+    } catch {
+      return t
+    }
+  }
+  return t.replace(/^\?/, '')
+}
+
+function displayQueryForForm(stored: string): string {
+  return storedQueryComparable(stored)
+}
+
+function normalizeSearchQueryForSave(
+  raw: string,
+): { ok: true; value: string } | { ok: false; message: string } {
+  const t = raw.trim()
+  if (!t) {
+    return { ok: false, message: 'Укажите параметры поиска (строка после ?)' }
+  }
+  if (/^https?:\/\//i.test(t)) {
+    try {
+      const u = new URL(t)
+      if (!/(\.|^)hh\.ru$/i.test(u.hostname)) {
+        return { ok: false, message: 'URL должен относиться к hh.ru' }
+      }
+      const q = u.search ? u.search.slice(1) : ''
+      if (!q) {
+        return { ok: false, message: 'В ссылке нет параметров запроса (?…)' }
+      }
+      return { ok: true, value: q }
+    } catch {
+      return { ok: false, message: 'Некорректный URL' }
+    }
+  }
+  return { ok: true, value: t.replace(/^\?/, '') }
 }
 
 async function loadList() {
@@ -54,7 +112,7 @@ function openEdit(row: SearchQueriesItem) {
   dialogMode.value = 'edit'
   editUuid.value = row.uuid
   formName.value = row.name
-  formQuery.value = row.query
+  formQuery.value = displayQueryForForm(row.query)
   formError.value = null
   dialogOpen.value = true
 }
@@ -62,13 +120,14 @@ function openEdit(row: SearchQueriesItem) {
 async function submitDialog() {
   formError.value = null
   const name = formName.value.trim()
-  const query = formQuery.value.trim()
-  if (!name || name.length > 512) {
-    formError.value = 'Укажите название до 512 символов'
+  const parsed = normalizeSearchQueryForSave(formQuery.value)
+  if (!parsed.ok) {
+    formError.value = parsed.message
     return
   }
-  if (!query || !isValidHhUrl(query)) {
-    formError.value = 'Укажите URL поиска, начинающийся с https://hh.ru'
+  const query = parsed.value
+  if (!name || name.length > 512) {
+    formError.value = 'Укажите название до 512 символов'
     return
   }
   formSaving.value = true
@@ -93,7 +152,7 @@ async function submitDialog() {
       const orig = items.value.find((i) => i.uuid === editUuid.value)
       if (orig) {
         if (name !== orig.name) body.name = name
-        if (query !== orig.query) body.query = query
+        if (query !== storedQueryComparable(orig.query)) body.query = query
       }
       if (Object.keys(body).length === 0) {
         formError.value = 'Нет изменений для сохранения'
@@ -139,15 +198,16 @@ async function confirmDelete() {
 
 const headers = [
   { title: 'Название', key: 'name' },
-  { title: 'Ссылка hh.ru', key: 'query' },
-  { title: 'Создан / обновлён', key: 'updatedDisplay' },
+  { title: 'Запрос (до 100 симв.)', key: 'queryPreview' },
+  { title: 'Обновлён / создан', key: 'dateDisplay' },
   { title: '', key: 'actions', sortable: false },
 ]
 
 const tableItems = computed(() =>
   items.value.map((r) => ({
     ...r,
-    updatedDisplay: `${r.createdAt} / ${r.updatedAt}`,
+    queryPreview: previewQueryCell(r.query),
+    dateDisplay: r.updatedAt?.trim() || r.createdAt?.trim() || '—',
   })),
 )
 
@@ -173,13 +233,17 @@ onMounted(loadList)
       <template #no-data>
         <div class="py-12 text-medium-emphasis">Нет запросов</div>
       </template>
-      <template #item.query="{ item }">
-        <a :href="item.query" target="_blank" rel="noopener noreferrer" class="text-decoration-none">{{
-          item.query
-        }}</a>
+      <template #item.queryPreview="{ item }">
+        <a
+          :href="fullHhSearchUrl(item.query)"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-decoration-none"
+          >{{ item.queryPreview }}</a
+        >
       </template>
-      <template #item.updatedDisplay="{ item }">
-        {{ item.updatedDisplay }}
+      <template #item.dateDisplay="{ item }">
+        {{ item.dateDisplay }}
       </template>
       <template #item.actions="{ item }">
         <v-btn class="mr-2" @click="openEdit(item)">Изменить</v-btn>
@@ -193,7 +257,13 @@ onMounted(loadList)
         <v-card-text>
           <p v-if="formError" class="text-error mb-4">{{ formError }}</p>
           <v-text-field v-model="formName" label="Название" variant="outlined" class="mb-4" />
-          <v-text-field v-model="formQuery" label="URL поиска (https://hh.ru…)" variant="outlined" />
+          <v-text-field
+            v-model="formQuery"
+            label="Параметры поиска (как в URL после ?)"
+            hint="Можно вставить полную ссылку hh.ru — сохранится только часть после ?. База: VITE_HH_SEARCH_BASE_URL."
+            persistent-hint
+            variant="outlined"
+          />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
