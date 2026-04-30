@@ -300,8 +300,8 @@ function onResponseInput(row: JobPostingsItem, next: ResponseStatus | null) {
     <v-dialog v-model="contentDialog" max-width="720">
       <v-card>
         <v-card-title class="text-h6 font-weight-regular">Текст вакансии</v-card-title>
-        <v-card-text>
-          <pre class="text-body-2" style="white-space: pre-wrap; font-family: inherit">{{ contentDialogText }}</pre>
+        <v-card-text class="content-dialog__body pa-4">
+          <pre class="content-dialog__pre text-body-2 ma-0">{{ contentDialogText }}</pre>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -315,3 +315,16 @@ function onResponseInput(row: JobPostingsItem, next: ResponseStatus | null) {
     </v-snackbar>
   </div>
 </template>
+
+<style scoped>
+.content-dialog__body {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.content-dialog__pre {
+  white-space: pre-wrap;
+  font-family: inherit;
+  word-break: break-word;
+}
+</style>
