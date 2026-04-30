@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { settingsHttp } from '@/api/http'
+import { orchestratorErrorMessage, postEventQueue } from '@/api/orchestratorEvents'
 import type { SearchQueriesItem, SearchQueriesList } from '@/api/types'
 import { computed, onMounted, ref } from 'vue'
 
@@ -23,6 +24,9 @@ const deleteError = ref<string | null>(null)
 
 const snackbar = ref(false)
 const snackbarText = ref('')
+
+/** UUID строки → идёт POST collection-query */
+const collectLoadingUuid = ref<string | null>(null)
 
 function hhSearchBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_HH_SEARCH_BASE_URL?.trim()
@@ -211,6 +215,23 @@ const tableItems = computed(() =>
   })),
 )
 
+async function runCollectForRow(item: SearchQueriesItem) {
+  collectLoadingUuid.value = item.uuid
+  try {
+    await postEventQueue('collection-query', {
+      name: item.name,
+      searchQuery: item.query,
+    })
+    snackbarText.value = 'Сбор поставлен в очередь'
+    snackbar.value = true
+  } catch (e) {
+    snackbarText.value = orchestratorErrorMessage(e)
+    snackbar.value = true
+  } finally {
+    collectLoadingUuid.value = null
+  }
+}
+
 onMounted(loadList)
 </script>
 
@@ -246,6 +267,13 @@ onMounted(loadList)
         {{ item.dateDisplay }}
       </template>
       <template #item.actions="{ item }">
+        <v-btn
+          class="mr-2"
+          :loading="collectLoadingUuid === item.uuid"
+          @click="runCollectForRow(item)"
+        >
+          Собрать вакансии
+        </v-btn>
         <v-btn class="mr-2" @click="openEdit(item)">Изменить</v-btn>
         <v-btn color="error" variant="text" @click="askDelete(item)">Удалить</v-btn>
       </template>

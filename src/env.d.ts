@@ -12,6 +12,8 @@ interface ImportMetaEnv {
   /** Пустая строка — same-origin (nginx / Vite proxy). */
   readonly VITE_SETTINGS_MANAGER_BASE_URL: string
   readonly VITE_JOB_POSTINGS_CRUD_BASE_URL: string
+  /** Пустая строка — same-origin; nginx проксирует `/events-queue` на celery-orchestrator-api. */
+  readonly VITE_CELERY_ORCHESTRATOR_BASE_URL?: string
   readonly VITE_FLOWER_BASE_URL: string
   /**
    * Базовый URL страницы поиска hh.ru без завершающего `?`.
@@ -22,6 +24,7 @@ interface ImportMetaEnv {
   /** Только dev: цели proxy в vite.config.ts */
   readonly VITE_DEV_PROXY_SETTINGS_MANAGER?: string
   readonly VITE_DEV_PROXY_JOB_POSTINGS_CRUD?: string
+  readonly VITE_DEV_PROXY_CELERY_ORCHESTRATOR?: string
 }
 
 interface ImportMeta {

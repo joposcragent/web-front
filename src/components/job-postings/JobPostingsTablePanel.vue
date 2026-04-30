@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { jobPostingsHttp } from '@/api/http'
+import { orchestratorErrorMessage, postEventQueue } from '@/api/orchestratorEvents'
 import type {
   EvaluationStatus,
   JobPostingsItem,
@@ -219,6 +220,21 @@ function onResponseInput(row: JobPostingsItem, next: ResponseStatus | null) {
     row.responseStatus = prev
   })
 }
+
+const collectBatchLoading = ref(false)
+
+async function runCollectBatch() {
+  collectBatchLoading.value = true
+  try {
+    await postEventQueue('collection-batch', {})
+    snackbarText.value = 'Сбор вакансий поставлен в очередь'
+    snackbar.value = true
+  } catch (e) {
+    showError(orchestratorErrorMessage(e))
+  } finally {
+    collectBatchLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -346,6 +362,17 @@ function onResponseInput(row: JobPostingsItem, next: ResponseStatus | null) {
         {{ item.company ?? '—' }}
       </template>
     </v-data-table-server>
+
+    <div v-if="preset === 'dashboard'" class="mt-4">
+      <v-btn
+        color="primary"
+        variant="flat"
+        :loading="collectBatchLoading"
+        @click="runCollectBatch"
+      >
+        Собрать вакансии
+      </v-btn>
+    </div>
 
     <v-dialog v-model="contentDialog" max-width="720">
       <v-card>

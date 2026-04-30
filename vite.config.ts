@@ -7,6 +7,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const settingsTarget = env.VITE_DEV_PROXY_SETTINGS_MANAGER ?? 'http://127.0.0.1:8080'
   const crudTarget = env.VITE_DEV_PROXY_JOB_POSTINGS_CRUD ?? 'http://127.0.0.1:8081'
+  const orchestratorTarget =
+    env.VITE_DEV_PROXY_CELERY_ORCHESTRATOR ?? 'http://127.0.0.1:8084'
 
   return {
     plugins: [
@@ -24,6 +26,7 @@ export default defineConfig(({ mode }) => {
         '/search-query': { target: settingsTarget, changeOrigin: true },
         '/relevance-thresholds': { target: settingsTarget, changeOrigin: true },
         '/reference-context': { target: settingsTarget, changeOrigin: true },
+        '/events-queue': { target: orchestratorTarget, changeOrigin: true },
       },
     },
   }
