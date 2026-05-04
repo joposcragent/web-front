@@ -24,6 +24,11 @@ export interface JobPostingsList {
   totalPages?: number | null
 }
 
+/** GET /notes/{uuid} и тело POST /notes/{uuid} */
+export interface JobPostingNotesPayload {
+  text: string
+}
+
 export interface ReferenceContext {
   context: string
   vector: number[]

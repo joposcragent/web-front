@@ -3,6 +3,7 @@ import { jobPostingsHttp, settingsHttp } from '@/api/http'
 import { orchestratorErrorMessage, postEventQueue } from '@/api/orchestratorEvents'
 import type {
   EvaluationStatus,
+  JobPostingNotesPayload,
   JobPostingsItem,
   JobPostingsList,
   PromptTemplate,
@@ -45,13 +46,7 @@ const BASE_HEADERS: TableHeaderRow[] = [
   { title: 'Загрузка', key: 'createdAt', sortable: true },
 ]
 
-const tableHeaders = computed(() => {
-  const rows: TableHeaderRow[] = [...BASE_HEADERS]
-  if (props.preset === 'dashboard') {
-    rows.push({ title: '', key: 'prompt', sortable: false, width: 56 })
-  }
-  return rows
-})
+const tableHeaders = computed(() => [...BASE_HEADERS])
 
 const items = ref<JobPostingsItem[]>([])
 const totalPages = ref(0)
@@ -121,6 +116,46 @@ const contentDialogText = ref('')
 const promptComposeDialog = ref(false)
 const promptComposeText = ref('')
 const promptLoadingUuid = ref<string | null>(null)
+
+const notesDialogVisible = ref(false)
+const notesEditUuid = ref<string | null>(null)
+const notesDraft = ref('')
+const notesLoadingUuid = ref<string | null>(null)
+const notesSaving = ref(false)
+
+function discardNotesDialog() {
+  notesDialogVisible.value = false
+  notesEditUuid.value = null
+  notesDraft.value = ''
+}
+
+async function openNotes(row: JobPostingsItem) {
+  notesLoadingUuid.value = row.uuid
+  try {
+    const { data } = await jobPostingsHttp.get<JobPostingNotesPayload>(`/notes/${row.uuid}`)
+    notesDraft.value = data.text ?? ''
+    notesEditUuid.value = row.uuid
+    notesDialogVisible.value = true
+  } catch {
+    showError('Не удалось загрузить заметку')
+  } finally {
+    notesLoadingUuid.value = null
+  }
+}
+
+async function saveNotes() {
+  const id = notesEditUuid.value
+  if (!id) return
+  notesSaving.value = true
+  try {
+    await jobPostingsHttp.post(`/notes/${id}`, { text: notesDraft.value })
+    discardNotesDialog()
+  } catch {
+    showError('Не удалось сохранить заметку')
+  } finally {
+    notesSaving.value = false
+  }
+}
 
 /** Литералы `\\n` / `\\r` из API или БД → настоящие переводы строк в собранном промпте. */
 function unescapeNewlinesInPromptText(s: string): string {
@@ -344,31 +379,43 @@ async function runCollectBatch() {
         </div>
       </template>
 
-      <template #item.prompt="{ item }">
-        <v-btn
-          variant="text"
-          density="compact"
-          min-width="0"
-          class="px-1"
-          :loading="promptLoadingUuid === item.uuid"
-          aria-label="Промпт для письма"
-          @click="openCoverLetterPrompt(item)"
-        >
-          <span class="text-h6" aria-hidden="true">📃</span>
-        </v-btn>
-      </template>
-
       <template #item.title="{ item }">
-        <v-btn
-          variant="text"
-          color="primary"
-          class="job-title-btn text-body-2 px-0 text-start"
-          min-width="0"
-          max-width="100%"
-          @click="openContent(item.content)"
-        >
-          {{ item.title }}
-        </v-btn>
+        <div class="d-flex align-center flex-wrap gap-1 job-title-row">
+          <v-btn
+            variant="text"
+            color="primary"
+            class="job-title-btn text-body-2 px-0 text-start"
+            min-width="0"
+            max-width="100%"
+            @click="openContent(item.content)"
+          >
+            {{ item.title }}
+          </v-btn>
+          <v-btn
+            variant="text"
+            density="compact"
+            min-width="0"
+            class="px-1 text-none"
+            :loading="notesLoadingUuid === item.uuid"
+            aria-label="Заметки к вакансии"
+            @click="openNotes(item)"
+          >
+            <span class="text-body-2">Notes</span>
+            <span class="ms-1" aria-hidden="true">📝</span>
+          </v-btn>
+          <v-btn
+            v-if="preset === 'dashboard'"
+            variant="text"
+            density="compact"
+            min-width="0"
+            class="px-1"
+            :loading="promptLoadingUuid === item.uuid"
+            aria-label="Промпт для письма"
+            @click="openCoverLetterPrompt(item)"
+          >
+            <span class="text-h6" aria-hidden="true">📃</span>
+          </v-btn>
+        </div>
       </template>
 
       <template #item.url="{ item }">
@@ -460,6 +507,30 @@ async function runCollectBatch() {
         <v-card-actions>
           <v-spacer />
           <v-btn @click="contentDialog = false">Закрыть</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog
+      :model-value="notesDialogVisible"
+      max-width="560"
+      @update:model-value="(v: boolean) => { if (!v) discardNotesDialog() }"
+    >
+      <v-card>
+        <v-card-title class="text-h6 font-weight-regular">Заметка</v-card-title>
+        <v-card-text class="pa-4">
+          <v-textarea
+            v-model="notesDraft"
+            label="Текст заметки"
+            variant="outlined"
+            rows="8"
+            auto-grow
+            hide-details="auto"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn color="primary" variant="flat" :loading="notesSaving" @click="saveNotes">Сохранить</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

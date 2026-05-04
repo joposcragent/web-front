@@ -32,6 +32,7 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/job-postings': { target: crudTarget, changeOrigin: true },
+        '/notes': { target: crudTarget, changeOrigin: true },
         '/search-query': { target: settingsTarget, changeOrigin: true },
         '/relevance-thresholds': { target: settingsTarget, changeOrigin: true },
         '/reference-context': { target: settingsTarget, changeOrigin: true },
