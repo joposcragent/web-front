@@ -11,11 +11,23 @@ import type {
   ResponseStatus,
 } from '@/api/types'
 import { computed, ref, watch } from 'vue'
+import { useTheme } from 'vuetify'
+
+import promptDarkSvg from '@/assets/job-postings-icons/prompt-dark.svg'
+import promptLightSvg from '@/assets/job-postings-icons/prompt-light.svg'
+import notesDarkSvg from '@/assets/job-postings-icons/notes-dark.svg'
+import notesLightSvg from '@/assets/job-postings-icons/notes-light.svg'
+import noNotesDarkSvg from '@/assets/job-postings-icons/no-notes-dark.svg'
+import noNotesLightSvg from '@/assets/job-postings-icons/no-notes-light.svg'
 
 const props = defineProps<{
   /** `dashboard` — отбор как на дашборде; `all` — все вакансии, сортировка по дате загрузки на сервере */
   preset: 'dashboard' | 'all'
 }>()
+
+const theme = useTheme()
+const isDark = computed(() => theme.global.current.value.dark)
+const promptIconSrc = computed(() => (isDark.value ? promptDarkSvg : promptLightSvg))
 
 const EVALUATION_OPTIONS: { title: string; value: EvaluationStatus }[] = [
   { title: 'NEW', value: 'NEW' },
@@ -123,6 +135,44 @@ const notesDraft = ref('')
 const notesLoadingUuid = ref<string | null>(null)
 const notesSaving = ref(false)
 
+/** Наличие непустого текста заметки по uuid (обновляется prefetch списка, открытием и сохранением модалки). */
+const notesFilledByUuid = ref<Record<string, boolean>>({})
+
+function isNotesNonEmpty(text: string | null | undefined): boolean {
+  return (text ?? '').trim().length > 0
+}
+
+function setNotesFilled(uuid: string, text: string | null | undefined) {
+  notesFilledByUuid.value = { ...notesFilledByUuid.value, [uuid]: isNotesNonEmpty(text) }
+}
+
+function notesIconSrc(uuid: string): string {
+  const filled = notesFilledByUuid.value[uuid] === true
+  return isDark.value
+    ? filled
+      ? notesDarkSvg
+      : noNotesDarkSvg
+    : filled
+      ? notesLightSvg
+      : noNotesLightSvg
+}
+
+async function prefetchNotesForItems(rows: JobPostingsItem[]) {
+  if (rows.length === 0) return
+  const next = { ...notesFilledByUuid.value }
+  await Promise.all(
+    rows.map(async (row) => {
+      try {
+        const { data } = await jobPostingsHttp.get<JobPostingNotesPayload>(`/notes/${row.uuid}`)
+        next[row.uuid] = isNotesNonEmpty(data.text)
+      } catch {
+        next[row.uuid] = false
+      }
+    }),
+  )
+  notesFilledByUuid.value = next
+}
+
 function discardNotesDialog() {
   notesDialogVisible.value = false
   notesEditUuid.value = null
@@ -134,6 +184,7 @@ async function openNotes(row: JobPostingsItem) {
   try {
     const { data } = await jobPostingsHttp.get<JobPostingNotesPayload>(`/notes/${row.uuid}`)
     notesDraft.value = data.text ?? ''
+    setNotesFilled(row.uuid, data.text)
     notesEditUuid.value = row.uuid
     notesDialogVisible.value = true
   } catch {
@@ -149,6 +200,7 @@ async function saveNotes() {
   notesSaving.value = true
   try {
     await jobPostingsHttp.post(`/notes/${id}`, { text: notesDraft.value })
+    setNotesFilled(id, notesDraft.value)
     discardNotesDialog()
   } catch {
     showError('Не удалось сохранить заметку')
@@ -247,10 +299,12 @@ async function fetchList() {
     const { data } = await jobPostingsHttp.get<JobPostingsList>(`/job-postings/list?${qs}`)
     items.value = data.list ?? []
     totalPages.value = data.totalPages ?? 0
+    void prefetchNotesForItems(items.value)
   } catch (e: unknown) {
     listError.value = e instanceof Error ? e.message : 'Ошибка загрузки'
     items.value = []
     totalPages.value = 0
+    notesFilledByUuid.value = {}
   } finally {
     loading.value = false
   }
@@ -395,25 +449,36 @@ async function runCollectBatch() {
             variant="text"
             density="compact"
             min-width="0"
-            class="px-1 text-none"
+            class="px-1 job-postings-icon-btn"
             :loading="notesLoadingUuid === item.uuid"
             aria-label="Заметки к вакансии"
             @click="openNotes(item)"
           >
-            <span class="text-body-2">Notes</span>
-            <span class="ms-1" aria-hidden="true">📝</span>
+            <img
+              class="job-postings-action-icon"
+              :src="notesIconSrc(item.uuid)"
+              width="22"
+              height="22"
+              alt=""
+            />
           </v-btn>
           <v-btn
             v-if="preset === 'dashboard'"
             variant="text"
             density="compact"
             min-width="0"
-            class="px-1"
+            class="px-1 job-postings-icon-btn"
             :loading="promptLoadingUuid === item.uuid"
             aria-label="Промпт для письма"
             @click="openCoverLetterPrompt(item)"
           >
-            <span class="text-h6" aria-hidden="true">📃</span>
+            <img
+              class="job-postings-action-icon"
+              :src="promptIconSrc"
+              width="22"
+              height="22"
+              alt=""
+            />
           </v-btn>
         </div>
       </template>
@@ -585,5 +650,16 @@ async function runCollectBatch() {
   white-space: pre-wrap;
   font-family: inherit;
   word-break: break-word;
+}
+
+.job-postings-icon-btn {
+  min-width: 36px;
+}
+
+.job-postings-action-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
 }
 </style>
