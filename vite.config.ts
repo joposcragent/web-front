@@ -26,6 +26,7 @@ export default defineConfig(({ mode }) => {
         '/search-query': { target: settingsTarget, changeOrigin: true },
         '/relevance-thresholds': { target: settingsTarget, changeOrigin: true },
         '/reference-context': { target: settingsTarget, changeOrigin: true },
+        '/prompt-template': { target: settingsTarget, changeOrigin: true },
         '/events-queue': { target: orchestratorTarget, changeOrigin: true },
       },
     },

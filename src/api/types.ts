@@ -37,6 +37,12 @@ export interface ReferenceContextPersisted {
   updatedAt: string
 }
 
+export interface PromptTemplate {
+  template: string | null
+  createdAt: string
+  updatedAt: string | null
+}
+
 export type RelevanceThresholdType = 'CONTENT' | 'NOTIFICATION'
 
 export interface RelevanceThresholdItem {

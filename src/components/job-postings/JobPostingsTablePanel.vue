@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { jobPostingsHttp } from '@/api/http'
+import { jobPostingsHttp, settingsHttp } from '@/api/http'
 import { orchestratorErrorMessage, postEventQueue } from '@/api/orchestratorEvents'
 import type {
   EvaluationStatus,
   JobPostingsItem,
   JobPostingsList,
+  PromptTemplate,
+  ReferenceContext,
   ResponseStatus,
 } from '@/api/types'
 import { computed, ref, watch } from 'vue'
@@ -30,7 +32,9 @@ const RESPONSE_OPTIONS: { title: string; value: ResponseStatus }[] = [
 
 const PER_PAGE = [30, 50, 80, 130] as const
 
-const headers = [
+type TableHeaderRow = { title: string; key: string; sortable: boolean; width?: number }
+
+const BASE_HEADERS: TableHeaderRow[] = [
   { title: 'Название', key: 'title', sortable: true },
   { title: 'URL', key: 'url', sortable: false },
   { title: 'Оценка', key: 'evaluationStatus', sortable: true },
@@ -40,6 +44,14 @@ const headers = [
   { title: 'Публикация', key: 'publicationDate', sortable: true },
   { title: 'Загрузка', key: 'createdAt', sortable: true },
 ]
+
+const tableHeaders = computed(() => {
+  const rows: TableHeaderRow[] = [...BASE_HEADERS]
+  if (props.preset === 'dashboard') {
+    rows.push({ title: '', key: 'prompt', sortable: false, width: 56 })
+  }
+  return rows
+})
 
 const items = ref<JobPostingsItem[]>([])
 const totalPages = ref(0)
@@ -87,7 +99,8 @@ const sortBy = ref<{ key: string; order: 'asc' | 'desc' }[]>([])
 const displayItems = computed(() => {
   const rows = [...items.value]
   const s = sortBy.value[0]
-  if (!s) return rows
+  if (!s || !rows.length) return rows
+  if (!(s.key in rows[0])) return rows
   const dir = s.order === 'desc' ? -1 : 1
   const key = s.key as keyof JobPostingsItem
   rows.sort((a, b) => {
@@ -104,6 +117,50 @@ const displayItems = computed(() => {
 
 const contentDialog = ref(false)
 const contentDialogText = ref('')
+
+const promptComposeDialog = ref(false)
+const promptComposeText = ref('')
+const promptLoadingUuid = ref<string | null>(null)
+
+function fillCoverLetterPrompt(template: string, jobPosting: string, resume: string): string {
+  return template
+    .replaceAll('${JOB_POSTING_CONTENT}', jobPosting)
+    .replaceAll('${RESUME}', resume)
+}
+
+async function openCoverLetterPrompt(row: JobPostingsItem) {
+  promptLoadingUuid.value = row.uuid
+  try {
+    const tplRes = await settingsHttp.get<PromptTemplate>('/prompt-template', {
+      validateStatus: (st) => st === 200 || st === 404,
+    })
+    if (tplRes.status === 404) {
+      showError('Шаблон промпта не найден')
+      return
+    }
+    const refRes = await settingsHttp.get<ReferenceContext | ''>('/reference-context', {
+      validateStatus: (st) => st === 200 || st === 202 || st === 404 || st === 500,
+    })
+    if (refRes.status === 404 || refRes.status === 202) {
+      showError('Сначала задайте эталонный контекст (резюме) в настройках')
+      return
+    }
+    if (refRes.status === 500) {
+      showError('Не удалось загрузить эталонный контекст')
+      return
+    }
+    const ref = refRes.data as ReferenceContext
+    const resumeText = ref.context ?? ''
+    const tpl = (tplRes.data as PromptTemplate).template ?? ''
+    const jobText = row.content ?? ''
+    promptComposeText.value = fillCoverLetterPrompt(tpl, jobText, resumeText)
+    promptComposeDialog.value = true
+  } catch {
+    showError('Не удалось собрать промпт')
+  } finally {
+    promptLoadingUuid.value = null
+  }
+}
 
 function openContent(text: string | null | undefined) {
   contentDialogText.value = text ?? ''
@@ -267,7 +324,7 @@ async function runCollectBatch() {
     <v-data-table-server
       v-model:page="page"
       v-model:items-per-page="itemsPerPage"
-      :headers="headers"
+      :headers="tableHeaders"
       :items="displayItems"
       :items-length="itemsLength"
       :loading="loading"
@@ -279,6 +336,20 @@ async function runCollectBatch() {
         <div class="py-12 text-medium-emphasis">
           {{ emptyHint }}
         </div>
+      </template>
+
+      <template #item.prompt="{ item }">
+        <v-btn
+          variant="text"
+          density="compact"
+          min-width="0"
+          class="px-1"
+          :loading="promptLoadingUuid === item.uuid"
+          aria-label="Промпт для письма"
+          @click="openCoverLetterPrompt(item)"
+        >
+          <span class="text-h6" aria-hidden="true">📃</span>
+        </v-btn>
       </template>
 
       <template #item.title="{ item }">
@@ -383,6 +454,19 @@ async function runCollectBatch() {
         <v-card-actions>
           <v-spacer />
           <v-btn @click="contentDialog = false">Закрыть</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="promptComposeDialog" max-width="720">
+      <v-card>
+        <v-card-title class="text-h6 font-weight-regular">Промпт для генерации</v-card-title>
+        <v-card-text class="content-dialog__body pa-4">
+          <pre class="content-dialog__pre text-body-2 ma-0">{{ promptComposeText }}</pre>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn @click="promptComposeDialog = false">Закрыть</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

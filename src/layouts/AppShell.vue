@@ -66,6 +66,11 @@ const navInlineStyle = computed(() => {
             title="Пороги релевантности"
             rounded="lg"
           />
+          <v-list-item
+            to="/settings/prompt-template"
+            title="Настройка промпта"
+            rounded="lg"
+          />
           <v-list-item to="/settings/search-queries" title="Поисковые запросы" rounded="lg" />
         </v-list>
       </aside>

@@ -41,6 +41,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Пороги релевантности' },
       },
       {
+        path: 'settings/prompt-template',
+        name: 'prompt-template',
+        component: () => import('@/views/PromptTemplateView.vue'),
+        meta: { title: 'Настройка промпта' },
+      },
+      {
         path: 'settings/search-queries',
         name: 'search-queries',
         component: () => import('@/views/SearchQueriesView.vue'),
