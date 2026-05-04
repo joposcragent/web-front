@@ -122,10 +122,16 @@ const promptComposeDialog = ref(false)
 const promptComposeText = ref('')
 const promptLoadingUuid = ref<string | null>(null)
 
+/** Литералы `\\n` / `\\r` из API или БД → настоящие переводы строк в собранном промпте. */
+function unescapeNewlinesInPromptText(s: string): string {
+  return s.replaceAll('\\r\\n', '\n').replaceAll('\\n', '\n').replaceAll('\\r', '\n')
+}
+
 function fillCoverLetterPrompt(template: string, jobPosting: string, resume: string): string {
-  return template
+  const composed = template
     .replaceAll('${JOB_POSTING_CONTENT}', jobPosting)
     .replaceAll('${RESUME}', resume)
+  return unescapeNewlinesInPromptText(composed)
 }
 
 async function openCoverLetterPrompt(row: JobPostingsItem) {
