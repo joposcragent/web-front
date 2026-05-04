@@ -11,6 +11,8 @@ set -euo pipefail
 #   VITE_HH_SEARCH_BASE_URL — база для ссылок на hh.ru (по умолчанию https://hh.ru/search/vacancy).
 #   VITE_CELERY_ORCHESTRATOR_BASE_URL — по умолчанию пусто (nginx проксирует /events-queue).
 #     Не использовать имя сервиса Docker — только пустая строка или URL, доступный из браузера.
+#   VITE_GIT_COMMIT — хэш для футера SPA; если не задан, скрипт подставляет `git rev-parse --short HEAD`
+#     из корня репозитория web-front (на хосте, до копирования в Docker).
 #
 # Дополнительные аргументы передаются в docker build после наших --build-arg (можно переопределить VITE_*).
 
@@ -31,6 +33,11 @@ vite_hh_search="${VITE_HH_SEARCH_BASE_URL:-https://hh.ru/search/vacancy}"
 # Не задавайте сюда http://celery-orchestrator-api:8000 — имя не резолвится в браузере.
 vite_orchestrator="${VITE_CELERY_ORCHESTRATOR_BASE_URL:-}"
 
+vite_git_commit="${VITE_GIT_COMMIT:-}"
+if [[ -z "${vite_git_commit}" ]] && git -C "${repo_root}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+	vite_git_commit="$(git -C "${repo_root}" rev-parse --short HEAD 2>/dev/null || true)"
+fi
+
 docker build \
 	--build-arg "NODE_VERSION=${node_version}" \
 	--build-arg "VITE_SETTINGS_MANAGER_BASE_URL=${vite_settings}" \
@@ -38,6 +45,7 @@ docker build \
 	--build-arg "VITE_FLOWER_BASE_URL=${vite_flower}" \
 	--build-arg "VITE_HH_SEARCH_BASE_URL=${vite_hh_search}" \
 	--build-arg "VITE_CELERY_ORCHESTRATOR_BASE_URL=${vite_orchestrator}" \
+	--build-arg "VITE_GIT_COMMIT=${vite_git_commit}" \
 	-t "${tag_versioned}" \
 	"$@" \
 	.

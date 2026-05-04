@@ -9,6 +9,10 @@ declare module '*.vue' {
 declare module 'vuetify/styles'
 
 interface ImportMetaEnv {
+  /** Версия из `package.json`, подставляется на этапе сборки Vite. */
+  readonly VITE_APP_VERSION: string
+  /** Короткий или полный хэш коммита; задаётся при сборке образа (`VITE_GIT_COMMIT`). */
+  readonly VITE_GIT_COMMIT: string
   /** Пустая строка — same-origin (nginx / Vite proxy). */
   readonly VITE_SETTINGS_MANAGER_BASE_URL: string
   readonly VITE_JOB_POSTINGS_CRUD_BASE_URL: string
