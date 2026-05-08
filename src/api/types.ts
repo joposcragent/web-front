@@ -5,6 +5,7 @@ export type ResponseStatus = 'NEW' | 'NOT_INTERESTED' | 'RESPONDED' | 'REJECTED'
 
 export interface JobPostingsItem {
   uuid: string
+  searchQueryUuid: string
   uid: string
   publicationDate: string
   title: string
@@ -48,23 +49,14 @@ export interface PromptTemplate {
   updatedAt: string | null
 }
 
-export type RelevanceThresholdType = 'CONTENT' | 'NOTIFICATION'
-
-export interface RelevanceThresholdItem {
-  value: number
-  type: RelevanceThresholdType
-  createdAt: string
-  updatedAt: string
-}
-
-export interface RelevanceThresholdsList {
-  list: RelevanceThresholdItem[]
-}
-
 export interface SearchQueriesItem {
   uuid: string
   name: string
   query: string
+  contentRelevance: number
+  notificationRelevance: number
+  isActive: boolean
+  isLazyScraping: boolean
   createdAt: string
   updatedAt: string
 }

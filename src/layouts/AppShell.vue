@@ -72,11 +72,6 @@ const buildFooterLine = computed(() => {
               rounded="lg"
             />
             <v-list-item
-              to="/settings/relevance-thresholds"
-              title="Пороги релевантности"
-              rounded="lg"
-            />
-            <v-list-item
               to="/settings/prompt-template"
               title="Настройка промпта"
               rounded="lg"

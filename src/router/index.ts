@@ -35,12 +35,6 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Эталонный контекст' },
       },
       {
-        path: 'settings/relevance-thresholds',
-        name: 'relevance-thresholds',
-        component: () => import('@/views/RelevanceThresholdsView.vue'),
-        meta: { title: 'Пороги релевантности' },
-      },
-      {
         path: 'settings/prompt-template',
         name: 'prompt-template',
         component: () => import('@/views/PromptTemplateView.vue'),

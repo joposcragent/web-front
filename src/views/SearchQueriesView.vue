@@ -5,6 +5,8 @@ import type { SearchQueriesItem, SearchQueriesList } from '@/api/types'
 import { computed, onMounted, ref } from 'vue'
 
 const DEFAULT_HH_SEARCH_BASE = 'https://hh.ru/search/vacancy'
+const DEFAULT_CONTENT_RELEVANCE = 0.82
+const DEFAULT_NOTIFICATION_RELEVANCE = 0.92
 
 const items = ref<SearchQueriesItem[]>([])
 const loading = ref(false)
@@ -15,6 +17,10 @@ const dialogMode = ref<'create' | 'edit'>('create')
 const editUuid = ref<string | null>(null)
 const formName = ref('')
 const formQuery = ref('')
+const formContentRelevance = ref(DEFAULT_CONTENT_RELEVANCE)
+const formNotificationRelevance = ref(DEFAULT_NOTIFICATION_RELEVANCE)
+const formIsActive = ref(true)
+const formIsLazyScraping = ref(false)
 const formSaving = ref(false)
 const formError = ref<string | null>(null)
 
@@ -89,6 +95,17 @@ function normalizeSearchQueryForSave(
   return { ok: true, value: t.replace(/^\?/, '') }
 }
 
+function relevanceError(label: string, v: number): string | null {
+  if (!Number.isFinite(v) || v < 0 || v > 1) {
+    return `${label}: укажите число от 0 до 1`
+  }
+  return null
+}
+
+function relEq(a: number, b: number): boolean {
+  return Math.abs(a - b) < 1e-9
+}
+
 async function loadList() {
   loading.value = true
   listError.value = null
@@ -108,6 +125,10 @@ function openCreate() {
   editUuid.value = null
   formName.value = ''
   formQuery.value = ''
+  formContentRelevance.value = DEFAULT_CONTENT_RELEVANCE
+  formNotificationRelevance.value = DEFAULT_NOTIFICATION_RELEVANCE
+  formIsActive.value = true
+  formIsLazyScraping.value = false
   formError.value = null
   dialogOpen.value = true
 }
@@ -117,6 +138,10 @@ function openEdit(row: SearchQueriesItem) {
   editUuid.value = row.uuid
   formName.value = row.name
   formQuery.value = displayQueryForForm(row.query)
+  formContentRelevance.value = row.contentRelevance
+  formNotificationRelevance.value = row.notificationRelevance
+  formIsActive.value = row.isActive
+  formIsLazyScraping.value = row.isLazyScraping
   formError.value = null
   dialogOpen.value = true
 }
@@ -134,13 +159,26 @@ async function submitDialog() {
     formError.value = 'Укажите название до 512 символов'
     return
   }
+  const crErr = relevanceError('Порог контента', formContentRelevance.value)
+  const nrErr = relevanceError('Порог уведомлений', formNotificationRelevance.value)
+  if (crErr || nrErr) {
+    formError.value = crErr ?? nrErr ?? 'Некорректные пороги'
+    return
+  }
   formSaving.value = true
   try {
     if (dialogMode.value === 'create') {
       let uuid = crypto.randomUUID()
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          await settingsHttp.post(`/search-query/${uuid}`, { name, query })
+          await settingsHttp.post(`/search-query/${uuid}`, {
+            name,
+            query,
+            contentRelevance: formContentRelevance.value,
+            notificationRelevance: formNotificationRelevance.value,
+            isActive: formIsActive.value,
+            isLazyScraping: formIsLazyScraping.value,
+          })
           break
         } catch (e: unknown) {
           const status = (e as { response?: { status?: number } }).response?.status
@@ -152,11 +190,21 @@ async function submitDialog() {
         }
       }
     } else if (editUuid.value) {
-      const body: { name?: string; query?: string } = {}
+      const body: Record<string, unknown> = {}
       const orig = items.value.find((i) => i.uuid === editUuid.value)
       if (orig) {
         if (name !== orig.name) body.name = name
         if (query !== storedQueryComparable(orig.query)) body.query = query
+        if (!relEq(formContentRelevance.value, orig.contentRelevance)) {
+          body.contentRelevance = formContentRelevance.value
+        }
+        if (!relEq(formNotificationRelevance.value, orig.notificationRelevance)) {
+          body.notificationRelevance = formNotificationRelevance.value
+        }
+        if (formIsActive.value !== orig.isActive) body.isActive = formIsActive.value
+        if (formIsLazyScraping.value !== orig.isLazyScraping) {
+          body.isLazyScraping = formIsLazyScraping.value
+        }
       }
       if (Object.keys(body).length === 0) {
         formError.value = 'Нет изменений для сохранения'
@@ -203,6 +251,10 @@ async function confirmDelete() {
 const headers = [
   { title: 'Название', key: 'name' },
   { title: 'Запрос (до 100 симв.)', key: 'queryPreview' },
+  { title: 'Порог контента', key: 'contentRelevance' },
+  { title: 'Порог уведомл.', key: 'notificationRelevance' },
+  { title: 'Активен', key: 'isActive', sortable: false },
+  { title: 'Ленивый', key: 'isLazyScraping', sortable: false },
   { title: 'Обновлён / создан', key: 'dateDisplay' },
   { title: '', key: 'actions', sortable: false },
 ]
@@ -221,6 +273,8 @@ async function runCollectForRow(item: SearchQueriesItem) {
     await postEventQueue('collection-query', {
       name: item.name,
       searchQuery: item.query,
+      searchQueryUuid: item.uuid,
+      lazy: item.isLazyScraping,
     })
     snackbarText.value = 'Сбор поставлен в очередь'
     snackbar.value = true
@@ -263,6 +317,22 @@ onMounted(loadList)
           >{{ item.queryPreview }}</a
         >
       </template>
+      <template #item.contentRelevance="{ item }">
+        {{ item.contentRelevance.toFixed(2) }}
+      </template>
+      <template #item.notificationRelevance="{ item }">
+        {{ item.notificationRelevance.toFixed(2) }}
+      </template>
+      <template #item.isActive="{ item }">
+        <v-chip size="small" :color="item.isActive ? 'success' : 'default'" variant="tonal">
+          {{ item.isActive ? 'Да' : 'Нет' }}
+        </v-chip>
+      </template>
+      <template #item.isLazyScraping="{ item }">
+        <v-chip size="small" :color="item.isLazyScraping ? 'primary' : 'default'" variant="tonal">
+          {{ item.isLazyScraping ? 'Да' : 'Нет' }}
+        </v-chip>
+      </template>
       <template #item.dateDisplay="{ item }">
         {{ item.dateDisplay }}
       </template>
@@ -291,6 +361,33 @@ onMounted(loadList)
             hint="Можно вставить полную ссылку hh.ru — сохранится только часть после ?. База: VITE_HH_SEARCH_BASE_URL."
             persistent-hint
             variant="outlined"
+            class="mb-4"
+          />
+          <v-text-field
+            v-model.number="formContentRelevance"
+            type="number"
+            step="0.01"
+            min="0"
+            max="1"
+            label="Порог релевантности контента (0–1)"
+            variant="outlined"
+            class="mb-4"
+          />
+          <v-text-field
+            v-model.number="formNotificationRelevance"
+            type="number"
+            step="0.01"
+            min="0"
+            max="1"
+            label="Порог для уведомлений (0–1)"
+            variant="outlined"
+            class="mb-4"
+          />
+          <v-checkbox v-model="formIsActive" label="Активен (участвует в плановом сборе)" density="comfortable" />
+          <v-checkbox
+            v-model="formIsLazyScraping"
+            label="Ленивый поиск (остановка при отсутствии новых вакансий на странице)"
+            density="comfortable"
           />
         </v-card-text>
         <v-card-actions>

@@ -34,7 +34,6 @@ export default defineConfig(({ mode }) => {
         '/job-postings': { target: crudTarget, changeOrigin: true },
         '/notes': { target: crudTarget, changeOrigin: true },
         '/search-query': { target: settingsTarget, changeOrigin: true },
-        '/relevance-thresholds': { target: settingsTarget, changeOrigin: true },
         '/reference-context': { target: settingsTarget, changeOrigin: true },
         '/prompt-template': { target: settingsTarget, changeOrigin: true },
         '/events-queue': { target: orchestratorTarget, changeOrigin: true },
