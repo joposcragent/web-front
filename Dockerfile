@@ -9,17 +9,19 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# Vite вшивает `VITE_*` на этапе сборки. Пустые API URL — same-origin через nginx (см. nginx.conf).
+# Vite вшивает `VITE_*` на этапе сборки. Пустые API URL — same-origin через nginx (см. nginx.conf, в т.ч. /evaluate).
 # Передайте хэш коммита, чтобы он отображался в футере SPA, например:
 #   docker build --build-arg VITE_GIT_COMMIT="$(git rev-parse --short HEAD)" ...
 ARG VITE_SETTINGS_MANAGER_BASE_URL=
 ARG VITE_JOB_POSTINGS_CRUD_BASE_URL=
+ARG VITE_JOB_POSTINGS_EVALUATOR_BASE_URL=
 ARG VITE_FLOWER_BASE_URL=http://localhost:5555
 ARG VITE_HH_SEARCH_BASE_URL=https://hh.ru/search/vacancy
 ARG VITE_CELERY_ORCHESTRATOR_BASE_URL=
 ARG VITE_GIT_COMMIT=
 ENV VITE_SETTINGS_MANAGER_BASE_URL=${VITE_SETTINGS_MANAGER_BASE_URL}
 ENV VITE_JOB_POSTINGS_CRUD_BASE_URL=${VITE_JOB_POSTINGS_CRUD_BASE_URL}
+ENV VITE_JOB_POSTINGS_EVALUATOR_BASE_URL=${VITE_JOB_POSTINGS_EVALUATOR_BASE_URL}
 ENV VITE_FLOWER_BASE_URL=${VITE_FLOWER_BASE_URL}
 ENV VITE_HH_SEARCH_BASE_URL=${VITE_HH_SEARCH_BASE_URL}
 ENV VITE_CELERY_ORCHESTRATOR_BASE_URL=${VITE_CELERY_ORCHESTRATOR_BASE_URL}

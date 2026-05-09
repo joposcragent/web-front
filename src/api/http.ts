@@ -19,3 +19,7 @@ export const jobPostingsHttp = axios.create({
 export const orchestratorHttp = axios.create({
   baseURL: apiBase(import.meta.env.VITE_CELERY_ORCHESTRATOR_BASE_URL),
 })
+
+export const evaluatorHttp = axios.create({
+  baseURL: apiBase(import.meta.env.VITE_JOB_POSTINGS_EVALUATOR_BASE_URL),
+})

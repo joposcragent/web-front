@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { jobPostingsHttp, settingsHttp } from '@/api/http'
+import { evaluatorHttp, jobPostingsHttp, settingsHttp } from '@/api/http'
 import { orchestratorErrorMessage, postEventQueue } from '@/api/orchestratorEvents'
 import type {
   EvaluationStatus,
@@ -363,6 +363,27 @@ async function openCoverLetterPrompt(row: JobPostingsItem) {
 
 function openJobDetail(item: JobPostingsItem) {
   detailItem.value = { ...item }
+}
+
+const detailEvaluateLoading = ref(false)
+
+async function evaluateCurrentVacancy() {
+  if (!detailItem.value) return
+  const id = detailItem.value.uuid
+  detailEvaluateLoading.value = true
+  try {
+    await evaluatorHttp.post(`/evaluate/sync/${id}`)
+    const { data } = await jobPostingsHttp.get<JobPostingsItem>(`/job-postings/${id}`)
+    detailItem.value = { ...data }
+    const idx = items.value.findIndex((r) => r.uuid === id)
+    if (idx >= 0) {
+      items.value[idx] = { ...data }
+    }
+  } catch {
+    showError('Не удалось выполнить оценку')
+  } finally {
+    detailEvaluateLoading.value = false
+  }
 }
 
 function formatLocaleDate(raw: string | null | undefined): string {
@@ -833,14 +854,15 @@ function contentVectorSummary(v: number[] | null | undefined): string {
 
     <v-dialog
       :model-value="detailItem != null"
-      max-width="720"
+      width="auto"
+      max-width="calc(100vw - 24px)"
       @update:model-value="(v: boolean) => { if (!v) detailItem = null }"
     >
-      <v-card v-if="detailItem">
-        <v-card-title class="text-h6 font-weight-regular text-wrap">
+      <v-card v-if="detailItem" class="job-detail-card d-flex flex-column">
+        <v-card-title class="text-h6 font-weight-regular text-wrap flex-shrink-0">
           {{ detailItem.title }}
         </v-card-title>
-        <v-card-text class="pa-4">
+        <v-card-text class="job-detail-card__body pa-4">
           <dl class="job-detail-dl text-body-2">
             <dt>uuid</dt>
             <dd>{{ detailItem.uuid }}</dd>
@@ -897,7 +919,15 @@ function contentVectorSummary(v: number[] | null | undefined): string {
             </dd>
           </dl>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="flex-shrink-0">
+          <v-btn
+            color="primary"
+            variant="flat"
+            :loading="detailEvaluateLoading"
+            @click="evaluateCurrentVacancy"
+          >
+            Оценить
+          </v-btn>
           <v-spacer />
           <v-btn @click="detailItem = null">Закрыть</v-btn>
         </v-card-actions>
@@ -991,15 +1021,40 @@ function contentVectorSummary(v: number[] | null | undefined): string {
   object-fit: contain;
 }
 
+.job-detail-card {
+  resize: both;
+  overflow: hidden;
+  width: 720px;
+  height: min(480px, 75vh);
+  min-width: 280px;
+  max-width: min(1200px, calc(100vw - 24px));
+  min-height: 220px;
+  max-height: min(92vh, 900px);
+}
+
+.job-detail-card__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .job-detail-dl {
   display: grid;
-  grid-template-columns: minmax(120px, 160px) 1fr;
+  grid-template-columns: minmax(112px, 160px) minmax(0, 1fr);
   gap: 8px 16px;
+  align-items: start;
 }
 
 .job-detail-dl dt {
   font-weight: 500;
-  color: rgb(var(--v-theme-on-surface-variant));
+  color: rgb(88 88 88);
+}
+
+.job-detail-dl dd {
+  margin: 0;
+  min-width: 0;
+  word-break: break-word;
 }
 
 .cursor-default {

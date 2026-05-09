@@ -6,8 +6,8 @@ set -euo pipefail
 # Переменные окружения (все опционально):
 #   IMAGE_NAME, IMAGE_VERSION — имя образа и тег версии
 #   NODE_VERSION — базовый образ Node (по умолчанию 22)
-#   VITE_SETTINGS_MANAGER_BASE_URL, VITE_JOB_POSTINGS_CRUD_BASE_URL — по умолчанию пустые
-#     (axios ходит на тот же origin; nginx проксирует на бэкенды). VITE_FLOWER_BASE_URL — ссылка на Flower.
+#   VITE_SETTINGS_MANAGER_BASE_URL, VITE_JOB_POSTINGS_CRUD_BASE_URL, VITE_JOB_POSTINGS_EVALUATOR_BASE_URL —
+#     по умолчанию пустые (axios ходит на тот же origin; nginx проксирует на бэкенды).
 #   VITE_HH_SEARCH_BASE_URL — база для ссылок на hh.ru (по умолчанию https://hh.ru/search/vacancy).
 #   VITE_CELERY_ORCHESTRATOR_BASE_URL — по умолчанию пусто (nginx проксирует /events-queue).
 #     Не использовать имя сервиса Docker — только пустая строка или URL, доступный из браузера.
@@ -27,6 +27,7 @@ tag_versioned="${image_name}:${version}"
 node_version="${NODE_VERSION:-22}"
 vite_settings="${VITE_SETTINGS_MANAGER_BASE_URL:-}"
 vite_crud="${VITE_JOB_POSTINGS_CRUD_BASE_URL:-}"
+vite_evaluator="${VITE_JOB_POSTINGS_EVALUATOR_BASE_URL:-}"
 vite_flower="${VITE_FLOWER_BASE_URL:-http://localhost:5555}"
 vite_hh_search="${VITE_HH_SEARCH_BASE_URL:-https://hh.ru/search/vacancy}"
 # Пусто по умолчанию: запросы с браузера идут на тот же origin, nginx проксирует /events-queue.
@@ -42,6 +43,7 @@ docker build \
 	--build-arg "NODE_VERSION=${node_version}" \
 	--build-arg "VITE_SETTINGS_MANAGER_BASE_URL=${vite_settings}" \
 	--build-arg "VITE_JOB_POSTINGS_CRUD_BASE_URL=${vite_crud}" \
+	--build-arg "VITE_JOB_POSTINGS_EVALUATOR_BASE_URL=${vite_evaluator}" \
 	--build-arg "VITE_FLOWER_BASE_URL=${vite_flower}" \
 	--build-arg "VITE_HH_SEARCH_BASE_URL=${vite_hh_search}" \
 	--build-arg "VITE_CELERY_ORCHESTRATOR_BASE_URL=${vite_orchestrator}" \
