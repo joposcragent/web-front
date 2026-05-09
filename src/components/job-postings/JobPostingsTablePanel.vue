@@ -55,7 +55,7 @@ const RESPONSE_FILTER_OPTS: { title: string; value: string }[] = [
   { title: '(пусто)', value: 'NULL' },
 ]
 
-const PER_PAGE = [30, 50, 80, 130] as const
+const PER_PAGE = [10, 30, 50, 80, 130] as const
 
 type TableHeaderRow = { title: string; key: string; sortable: boolean; width?: number }
 
@@ -77,7 +77,7 @@ const tableHeaders = computed(() => [...BASE_HEADERS])
 const items = ref<JobPostingsItem[]>([])
 const totalPages = ref(0)
 const page = ref(1)
-const itemsPerPage = ref(30)
+const itemsPerPage = ref(10)
 const loading = ref(false)
 const listError = ref<string | null>(null)
 
