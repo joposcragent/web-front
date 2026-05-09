@@ -9,8 +9,10 @@ import type {
   PromptTemplate,
   ReferenceContext,
   ResponseStatus,
+  SearchQueriesList,
 } from '@/api/types'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useTheme } from 'vuetify'
 
 import promptDarkSvg from '@/assets/job-postings-icons/prompt-dark.svg'
@@ -43,19 +45,31 @@ const RESPONSE_OPTIONS: { title: string; value: ResponseStatus }[] = [
   { title: 'REJECTED', value: 'REJECTED' },
 ]
 
+const EVAL_FILTER_OPTS: { title: string; value: string }[] = [
+  ...EVALUATION_OPTIONS.map((o) => ({ title: o.title, value: o.value })),
+  { title: '(пусто)', value: 'NULL' },
+]
+
+const RESPONSE_FILTER_OPTS: { title: string; value: string }[] = [
+  ...RESPONSE_OPTIONS.map((o) => ({ title: o.title, value: o.value })),
+  { title: '(пусто)', value: 'NULL' },
+]
+
 const PER_PAGE = [30, 50, 80, 130] as const
 
 type TableHeaderRow = { title: string; key: string; sortable: boolean; width?: number }
 
 const BASE_HEADERS: TableHeaderRow[] = [
   { title: 'Название', key: 'title', sortable: true },
+  { title: 'Запрос', key: 'searchQuery', sortable: false },
   { title: 'URL', key: 'url', sortable: false },
-  { title: 'Оценка', key: 'evaluationStatus', sortable: true },
-  { title: 'Рассмотрение', key: 'responseStatus', sortable: true },
+  { title: 'Оценка', key: 'evaluationStatus', sortable: false },
+  { title: 'Рассмотрение', key: 'responseStatus', sortable: false },
   { title: 'Релевантность', key: 'relevance', sortable: true },
   { title: 'Компания', key: 'company', sortable: true },
   { title: 'Публикация', key: 'publicationDate', sortable: true },
   { title: 'Загрузка', key: 'createdAt', sortable: true },
+  { title: 'Обновление', key: 'updatedAt', sortable: true },
 ]
 
 const tableHeaders = computed(() => [...BASE_HEADERS])
@@ -67,29 +81,122 @@ const itemsPerPage = ref(30)
 const loading = ref(false)
 const listError = ref<string | null>(null)
 
-const titleFilter = ref('')
-const companyFilter = ref('')
-const titleDebounced = ref('')
-const companyDebounced = ref('')
+const searchFilter = ref('')
+const searchDebounced = ref('')
+let searchTimer: ReturnType<typeof setTimeout> | undefined
 
-let titleTimer: ReturnType<typeof setTimeout> | undefined
-let companyTimer: ReturnType<typeof setTimeout> | undefined
-
-watch(titleFilter, (v) => {
-  clearTimeout(titleTimer)
-  titleTimer = setTimeout(() => {
-    titleDebounced.value = v
+watch(searchFilter, (v) => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    searchDebounced.value = v
     page.value = 1
   }, 350)
 })
 
-watch(companyFilter, (v) => {
-  clearTimeout(companyTimer)
-  companyTimer = setTimeout(() => {
-    companyDebounced.value = v
-    page.value = 1
-  }, 350)
+/** `preset` — дефолт дашборда; `none` — не передавать параметр; `custom` — явный список */
+type StatusAxis = 'preset' | 'none' | 'custom'
+
+const evalAxis = ref<StatusAxis>('preset')
+const evalCustomValues = ref<string[]>([])
+const respAxis = ref<StatusAxis>('preset')
+const respCustomValues = ref<string[]>([])
+
+const evalFilterMenu = ref(false)
+const respFilterMenu = ref(false)
+const evalDraft = reactive<Record<string, boolean>>({})
+const respDraft = reactive<Record<string, boolean>>({})
+
+function initDraft(
+  opts: { title: string; value: string }[],
+  draft: Record<string, boolean>,
+  selected: string[],
+) {
+  for (const o of opts) {
+    draft[o.value] = selected.includes(o.value)
+  }
+}
+
+function effectiveEvalQueryValues(): string[] {
+  if (evalAxis.value === 'preset') {
+    return props.preset === 'dashboard' ? ['RELEVANT'] : []
+  }
+  if (evalAxis.value === 'none') return []
+  return [...evalCustomValues.value]
+}
+
+function effectiveRespQueryValues(): string[] {
+  if (respAxis.value === 'preset') {
+    return props.preset === 'dashboard' ? ['NEW', 'RESPONDED'] : []
+  }
+  if (respAxis.value === 'none') return []
+  return [...respCustomValues.value]
+}
+
+function openEvalFilterMenu() {
+  initDraft(EVAL_FILTER_OPTS, evalDraft, effectiveEvalQueryValues())
+}
+
+function openRespFilterMenu() {
+  initDraft(RESPONSE_FILTER_OPTS, respDraft, effectiveRespQueryValues())
+}
+
+function applyEvalFilter() {
+  const sel = EVAL_FILTER_OPTS.filter((o) => evalDraft[o.value]).map((o) => o.value)
+  if (sel.length === 0) {
+    evalAxis.value = 'none'
+  } else {
+    evalAxis.value = 'custom'
+    evalCustomValues.value = sel
+  }
+  evalFilterMenu.value = false
+}
+
+function clearEvalFilter() {
+  evalAxis.value = 'none'
+  evalFilterMenu.value = false
+}
+
+function applyRespFilter() {
+  const sel = RESPONSE_FILTER_OPTS.filter((o) => respDraft[o.value]).map((o) => o.value)
+  if (sel.length === 0) {
+    respAxis.value = 'none'
+  } else {
+    respAxis.value = 'custom'
+    respCustomValues.value = sel
+  }
+  respFilterMenu.value = false
+}
+
+function clearRespFilter() {
+  respAxis.value = 'none'
+  respFilterMenu.value = false
+}
+
+const searchQueryNameByUuid = ref<Record<string, string>>({})
+
+onMounted(async () => {
+  try {
+    const { data } = await settingsHttp.get<SearchQueriesList>('/search-query/list')
+    const m: Record<string, string> = {}
+    if (Array.isArray(data)) {
+      for (const q of data) {
+        m[q.uuid] = q.name
+      }
+    }
+    searchQueryNameByUuid.value = m
+  } catch {
+    searchQueryNameByUuid.value = {}
+  }
 })
+
+function searchQueryLabel(uuid: string): string {
+  return searchQueryNameByUuid.value[uuid] ?? shortUuid(uuid)
+}
+
+function shortUuid(uuid: string): string {
+  if (uuid.length <= 12) return uuid
+  return `${uuid.slice(0, 8)}…`
+}
 
 const itemsLength = computed(() => {
   if (totalPages.value <= 0) return 0
@@ -122,8 +229,7 @@ const displayItems = computed(() => {
   return rows
 })
 
-const contentDialog = ref(false)
-const contentDialogText = ref('')
+const detailItem = ref<JobPostingsItem | null>(null)
 
 const promptComposeDialog = ref(false)
 const promptComposeText = ref('')
@@ -255,24 +361,40 @@ async function openCoverLetterPrompt(row: JobPostingsItem) {
   }
 }
 
-function openContent(text: string | null | undefined) {
-  contentDialogText.value = text ?? ''
-  contentDialog.value = true
+function openJobDetail(item: JobPostingsItem) {
+  detailItem.value = { ...item }
 }
 
-function buildListParams(p: number, size: number) {
+function formatLocaleDate(raw: string | null | undefined): string {
+  if (raw == null || raw === '') return '—'
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return String(raw)
+  return d.toLocaleDateString()
+}
+
+function isoTooltip(raw: string | null | undefined): string {
+  if (raw == null || raw === '') return ''
+  const d = new Date(raw)
+  return Number.isNaN(d.getTime()) ? String(raw) : d.toISOString()
+}
+
+function appendStatusFilters(params: Record<string, string | number | boolean | string[]>) {
+  const ev = effectiveEvalQueryValues()
+  if (ev.length > 0) params.evaluationStatus = ev
+
+  const rs = effectiveRespQueryValues()
+  if (rs.length > 0) params.responseStatus = rs
+}
+
+function buildFetchParams(p: number, size: number) {
   const params: Record<string, string | number | boolean | string[]> = {
     page: p,
     size,
   }
-  if (props.preset === 'dashboard') {
-    params.evaluationStatus = ['RELEVANT']
-    params.responseStatus = ['NEW', 'RESPONDED']
-  } else {
+  appendStatusFilters(params)
+  if (props.preset === 'all') {
     params.sort = 'created_at_desc'
   }
-  if (titleDebounced.value.trim()) params.title = titleDebounced.value.trim()
-  if (companyDebounced.value.trim()) params.company = companyDebounced.value.trim()
   return params
 }
 
@@ -295,8 +417,15 @@ async function fetchList() {
   loading.value = true
   listError.value = null
   try {
-    const qs = serializeParams(buildListParams(page.value, itemsPerPage.value))
-    const { data } = await jobPostingsHttp.get<JobPostingsList>(`/job-postings/list?${qs}`)
+    const base = buildFetchParams(page.value, itemsPerPage.value)
+    const q = searchDebounced.value.trim()
+    let path: string
+    if (q) {
+      path = `/job-postings/search-query/by-substring?${serializeParams({ ...base, substring: q })}`
+    } else {
+      path = `/job-postings/list?${serializeParams(base)}`
+    }
+    const { data } = await jobPostingsHttp.get<JobPostingsList>(path)
     items.value = data.list ?? []
     totalPages.value = data.totalPages ?? 0
     void prefetchNotesForItems(items.value)
@@ -310,7 +439,20 @@ async function fetchList() {
   }
 }
 
-watch([page, itemsPerPage, titleDebounced, companyDebounced], fetchList, { immediate: true })
+watch(
+  [
+    page,
+    itemsPerPage,
+    searchDebounced,
+    evalAxis,
+    evalCustomValues,
+    respAxis,
+    respCustomValues,
+    () => props.preset,
+  ],
+  fetchList,
+  { immediate: true, deep: true },
+)
 
 const snackbar = ref(false)
 const snackbarText = ref('')
@@ -387,6 +529,11 @@ async function runCollectBatch() {
     collectBatchLoading.value = false
   }
 }
+
+function contentVectorSummary(v: number[] | null | undefined): string {
+  if (v == null || v.length === 0) return '—'
+  return `вектор из ${v.length} чисел`
+}
 </script>
 
 <template>
@@ -394,20 +541,10 @@ async function runCollectBatch() {
     <p v-if="listError" class="text-error mb-4">{{ listError }}</p>
 
     <v-row class="mb-6" dense>
-      <v-col cols="12" md="4">
+      <v-col cols="12" md="6" lg="5">
         <v-text-field
-          v-model="titleFilter"
-          label="Фильтр по названию"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          clearable
-        />
-      </v-col>
-      <v-col cols="12" md="4">
-        <v-text-field
-          v-model="companyFilter"
-          label="Фильтр по компании"
+          v-model="searchFilter"
+          label="Поиск"
           variant="outlined"
           density="comfortable"
           hide-details
@@ -424,12 +561,105 @@ async function runCollectBatch() {
       :items-length="itemsLength"
       :loading="loading"
       :items-per-page-options="[...PER_PAGE]"
-      class="elevation-0 border rounded-lg"
+      hover
+      class="elevation-0 border rounded-lg job-postings-table"
       @update:options="onTableUpdate"
     >
       <template #no-data>
         <div class="py-12 text-medium-emphasis">
           {{ emptyHint }}
+        </div>
+      </template>
+
+      <template #header.evaluationStatus>
+        <div class="d-flex align-center gap-1 flex-nowrap">
+          <span>Оценка</span>
+          <v-menu
+            v-model="evalFilterMenu"
+            location="bottom"
+            :close-on-content-click="false"
+            @update:model-value="(v: boolean) => v && openEvalFilterMenu()"
+          >
+            <template #activator="{ props: menuProps }">
+              <v-btn
+                v-bind="menuProps"
+                icon
+                variant="text"
+                size="x-small"
+                density="compact"
+                class="text-medium-emphasis"
+                aria-label="Фильтр по статусу оценки"
+              >
+                🌪️
+              </v-btn>
+            </template>
+            <v-card min-width="240">
+              <v-list density="compact" class="py-2">
+                <v-list-item v-for="opt in EVAL_FILTER_OPTS" :key="opt.value" class="px-2">
+                  <template #prepend>
+                    <v-checkbox
+                      v-model="evalDraft[opt.value]"
+                      hide-details
+                      density="compact"
+                      color="primary"
+                    />
+                  </template>
+                  <v-list-item-title class="text-body-2">{{ opt.title }}</v-list-item-title>
+                </v-list-item>
+              </v-list>
+              <v-divider />
+              <v-card-actions class="px-2 py-2">
+                <v-btn size="small" variant="flat" color="primary" @click="applyEvalFilter">ОК</v-btn>
+                <v-btn size="small" variant="text" @click="clearEvalFilter">Очистить</v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-menu>
+        </div>
+      </template>
+
+      <template #header.responseStatus>
+        <div class="d-flex align-center gap-1 flex-nowrap">
+          <span>Рассмотрение</span>
+          <v-menu
+            v-model="respFilterMenu"
+            location="bottom"
+            :close-on-content-click="false"
+            @update:model-value="(v: boolean) => v && openRespFilterMenu()"
+          >
+            <template #activator="{ props: menuProps }">
+              <v-btn
+                v-bind="menuProps"
+                icon
+                variant="text"
+                size="x-small"
+                density="compact"
+                class="text-medium-emphasis"
+                aria-label="Фильтр по статусу рассмотрения"
+              >
+                🌪️
+              </v-btn>
+            </template>
+            <v-card min-width="260">
+              <v-list density="compact" class="py-2">
+                <v-list-item v-for="opt in RESPONSE_FILTER_OPTS" :key="opt.value" class="px-2">
+                  <template #prepend>
+                    <v-checkbox
+                      v-model="respDraft[opt.value]"
+                      hide-details
+                      density="compact"
+                      color="primary"
+                    />
+                  </template>
+                  <v-list-item-title class="text-body-2">{{ opt.title }}</v-list-item-title>
+                </v-list-item>
+              </v-list>
+              <v-divider />
+              <v-card-actions class="px-2 py-2">
+                <v-btn size="small" variant="flat" color="primary" @click="applyRespFilter">ОК</v-btn>
+                <v-btn size="small" variant="text" @click="clearRespFilter">Очистить</v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-menu>
         </div>
       </template>
 
@@ -441,7 +671,7 @@ async function runCollectBatch() {
             class="job-title-btn text-body-2 px-0 text-start"
             min-width="0"
             max-width="100%"
-            @click="openContent(item.content)"
+            @click="openJobDetail(item)"
           >
             {{ item.title }}
           </v-btn>
@@ -481,6 +711,17 @@ async function runCollectBatch() {
             />
           </v-btn>
         </div>
+      </template>
+
+      <template #item.searchQuery="{ item }">
+        <RouterLink
+          v-if="searchQueryNameByUuid[item.searchQueryUuid]"
+          :to="{ name: 'search-queries', query: { focus: item.searchQueryUuid } }"
+          class="text-primary text-decoration-none"
+        >
+          {{ searchQueryNameByUuid[item.searchQueryUuid] }}
+        </RouterLink>
+        <span v-else class="text-medium-emphasis">{{ searchQueryLabel(item.searchQueryUuid) }}</span>
       </template>
 
       <template #item.url="{ item }">
@@ -550,6 +791,33 @@ async function runCollectBatch() {
       <template #item.company="{ item }">
         {{ item.company ?? '—' }}
       </template>
+
+      <template #item.publicationDate="{ item }">
+        <v-tooltip v-if="item.publicationDate" location="top" :text="isoTooltip(item.publicationDate)">
+          <template #activator="{ props: tipProps }">
+            <span v-bind="tipProps" class="cursor-default">{{ formatLocaleDate(item.publicationDate) }}</span>
+          </template>
+        </v-tooltip>
+        <span v-else>—</span>
+      </template>
+
+      <template #item.createdAt="{ item }">
+        <v-tooltip v-if="item.createdAt" location="top" :text="isoTooltip(item.createdAt)">
+          <template #activator="{ props: tipProps }">
+            <span v-bind="tipProps" class="cursor-default">{{ formatLocaleDate(item.createdAt) }}</span>
+          </template>
+        </v-tooltip>
+        <span v-else>—</span>
+      </template>
+
+      <template #item.updatedAt="{ item }">
+        <v-tooltip v-if="item.updatedAt" location="top" :text="isoTooltip(item.updatedAt)">
+          <template #activator="{ props: tipProps }">
+            <span v-bind="tipProps" class="cursor-default">{{ formatLocaleDate(item.updatedAt) }}</span>
+          </template>
+        </v-tooltip>
+        <span v-else>—</span>
+      </template>
     </v-data-table-server>
 
     <div v-if="preset === 'dashboard'" class="mt-4">
@@ -563,15 +831,75 @@ async function runCollectBatch() {
       </v-btn>
     </div>
 
-    <v-dialog v-model="contentDialog" max-width="720">
-      <v-card>
-        <v-card-title class="text-h6 font-weight-regular">Текст вакансии</v-card-title>
-        <v-card-text class="content-dialog__body pa-4">
-          <pre class="content-dialog__pre text-body-2 ma-0">{{ contentDialogText }}</pre>
+    <v-dialog
+      :model-value="detailItem != null"
+      max-width="720"
+      @update:model-value="(v: boolean) => { if (!v) detailItem = null }"
+    >
+      <v-card v-if="detailItem">
+        <v-card-title class="text-h6 font-weight-regular text-wrap">
+          {{ detailItem.title }}
+        </v-card-title>
+        <v-card-text class="pa-4">
+          <dl class="job-detail-dl text-body-2">
+            <dt>uuid</dt>
+            <dd>{{ detailItem.uuid }}</dd>
+            <dt>searchQueryUuid</dt>
+            <dd>{{ detailItem.searchQueryUuid }}</dd>
+            <dt>uid</dt>
+            <dd>{{ detailItem.uid }}</dd>
+            <dt>url</dt>
+            <dd>
+              <a :href="detailItem.url" target="_blank" rel="noopener noreferrer" class="text-primary">{{
+                detailItem.url
+              }}</a>
+            </dd>
+            <dt>company</dt>
+            <dd>{{ detailItem.company ?? '—' }}</dd>
+            <dt>relevance</dt>
+            <dd>{{ detailItem.relevance != null ? detailItem.relevance : '—' }}</dd>
+            <dt>evaluationStatus</dt>
+            <dd>{{ evalLabel(detailItem.evaluationStatus) }}</dd>
+            <dt>responseStatus</dt>
+            <dd>{{ responseLabel(detailItem.responseStatus) }}</dd>
+            <dt>publicationDate</dt>
+            <dd>
+              <v-tooltip v-if="detailItem.publicationDate" location="top" :text="isoTooltip(detailItem.publicationDate)">
+                <template #activator="{ props: tipProps }">
+                  <span v-bind="tipProps">{{ formatLocaleDate(detailItem.publicationDate) }}</span>
+                </template>
+              </v-tooltip>
+              <span v-else>—</span>
+            </dd>
+            <dt>createdAt</dt>
+            <dd>
+              <v-tooltip v-if="detailItem.createdAt" location="top" :text="isoTooltip(detailItem.createdAt)">
+                <template #activator="{ props: tipProps }">
+                  <span v-bind="tipProps">{{ formatLocaleDate(detailItem.createdAt) }}</span>
+                </template>
+              </v-tooltip>
+              <span v-else>—</span>
+            </dd>
+            <dt>updatedAt</dt>
+            <dd>
+              <v-tooltip v-if="detailItem.updatedAt" location="top" :text="isoTooltip(detailItem.updatedAt)">
+                <template #activator="{ props: tipProps }">
+                  <span v-bind="tipProps">{{ formatLocaleDate(detailItem.updatedAt) }}</span>
+                </template>
+              </v-tooltip>
+              <span v-else>—</span>
+            </dd>
+            <dt>contentVector</dt>
+            <dd>{{ contentVectorSummary(detailItem.contentVector ?? null) }}</dd>
+            <dt>content</dt>
+            <dd>
+              <pre class="content-dialog__pre text-body-2 ma-0">{{ detailItem.content ?? '—' }}</pre>
+            </dd>
+          </dl>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="contentDialog = false">Закрыть</v-btn>
+          <v-btn @click="detailItem = null">Закрыть</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -661,5 +989,24 @@ async function runCollectBatch() {
   width: 22px;
   height: 22px;
   object-fit: contain;
+}
+
+.job-detail-dl {
+  display: grid;
+  grid-template-columns: minmax(120px, 160px) 1fr;
+  gap: 8px 16px;
+}
+
+.job-detail-dl dt {
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface-variant));
+}
+
+.cursor-default {
+  cursor: default;
+}
+
+:deep(.job-postings-table tbody tr:hover) {
+  background: rgba(var(--v-theme-primary), 0.06);
 }
 </style>

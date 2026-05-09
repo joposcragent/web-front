@@ -3,6 +3,10 @@ import { settingsHttp } from '@/api/http'
 import { orchestratorErrorMessage, postEventQueue } from '@/api/orchestratorEvents'
 import type { SearchQueriesItem, SearchQueriesList } from '@/api/types'
 import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+const route = useRoute()
+const router = useRouter()
 
 const DEFAULT_HH_SEARCH_BASE = 'https://hh.ru/search/vacancy'
 const DEFAULT_CONTENT_RELEVANCE = 0.82
@@ -286,7 +290,29 @@ async function runCollectForRow(item: SearchQueriesItem) {
   }
 }
 
-onMounted(loadList)
+function parseFocusUuid(): string | undefined {
+  const raw = route.query.focus
+  if (typeof raw === 'string' && raw.trim()) return raw.trim()
+  if (Array.isArray(raw) && raw[0]) return String(raw[0]).trim()
+  return undefined
+}
+
+async function consumeFocusFromRoute() {
+  const focusUuid = parseFocusUuid()
+  if (!focusUuid) return
+  const row = items.value.find((i) => i.uuid === focusUuid)
+  if (row) openEdit(row)
+  const q = { ...route.query }
+  delete q.focus
+  await router.replace({ path: route.path, query: q })
+}
+
+async function loadListAndFocus() {
+  await loadList()
+  await consumeFocusFromRoute()
+}
+
+onMounted(loadListAndFocus)
 </script>
 
 <template>
