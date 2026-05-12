@@ -21,6 +21,11 @@ import notesDarkSvg from '@/assets/job-postings-icons/notes-dark.svg'
 import notesLightSvg from '@/assets/job-postings-icons/notes-light.svg'
 import noNotesDarkSvg from '@/assets/job-postings-icons/no-notes-dark.svg'
 import noNotesLightSvg from '@/assets/job-postings-icons/no-notes-light.svg'
+import {
+  formatDisplayDateOnly,
+  formatDisplayDateTime,
+  formatDisplayDateTimeFull,
+} from '@/utils/displayDateTime'
 
 const props = defineProps<{
   /** `dashboard` — отбор как на дашборде; `all` — все вакансии, сортировка по дате загрузки на сервере */
@@ -384,19 +389,6 @@ async function evaluateCurrentVacancy() {
   } finally {
     detailEvaluateLoading.value = false
   }
-}
-
-function formatLocaleDate(raw: string | null | undefined): string {
-  if (raw == null || raw === '') return '—'
-  const d = new Date(raw)
-  if (Number.isNaN(d.getTime())) return String(raw)
-  return d.toLocaleDateString()
-}
-
-function isoTooltip(raw: string | null | undefined): string {
-  if (raw == null || raw === '') return ''
-  const d = new Date(raw)
-  return Number.isNaN(d.getTime()) ? String(raw) : d.toISOString()
 }
 
 function appendStatusFilters(params: Record<string, string | number | boolean | string[]>) {
@@ -814,27 +806,27 @@ function contentVectorSummary(v: number[] | null | undefined): string {
       </template>
 
       <template #item.publicationDate="{ item }">
-        <v-tooltip v-if="item.publicationDate" location="top" :text="isoTooltip(item.publicationDate)">
+        <v-tooltip v-if="item.publicationDate" location="top" :text="formatDisplayDateTimeFull(item.publicationDate)">
           <template #activator="{ props: tipProps }">
-            <span v-bind="tipProps" class="cursor-default">{{ formatLocaleDate(item.publicationDate) }}</span>
+            <span v-bind="tipProps" class="cursor-default">{{ formatDisplayDateOnly(item.publicationDate) }}</span>
           </template>
         </v-tooltip>
         <span v-else>—</span>
       </template>
 
       <template #item.createdAt="{ item }">
-        <v-tooltip v-if="item.createdAt" location="top" :text="isoTooltip(item.createdAt)">
+        <v-tooltip v-if="item.createdAt" location="top" :text="formatDisplayDateTimeFull(item.createdAt)">
           <template #activator="{ props: tipProps }">
-            <span v-bind="tipProps" class="cursor-default">{{ formatLocaleDate(item.createdAt) }}</span>
+            <span v-bind="tipProps" class="cursor-default">{{ formatDisplayDateTime(item.createdAt) }}</span>
           </template>
         </v-tooltip>
         <span v-else>—</span>
       </template>
 
       <template #item.updatedAt="{ item }">
-        <v-tooltip v-if="item.updatedAt" location="top" :text="isoTooltip(item.updatedAt)">
+        <v-tooltip v-if="item.updatedAt" location="top" :text="formatDisplayDateTimeFull(item.updatedAt)">
           <template #activator="{ props: tipProps }">
-            <span v-bind="tipProps" class="cursor-default">{{ formatLocaleDate(item.updatedAt) }}</span>
+            <span v-bind="tipProps" class="cursor-default">{{ formatDisplayDateTime(item.updatedAt) }}</span>
           </template>
         </v-tooltip>
         <span v-else>—</span>
@@ -886,27 +878,27 @@ function contentVectorSummary(v: number[] | null | undefined): string {
             <dd>{{ responseLabel(detailItem.responseStatus) }}</dd>
             <dt>publicationDate</dt>
             <dd>
-              <v-tooltip v-if="detailItem.publicationDate" location="top" :text="isoTooltip(detailItem.publicationDate)">
+              <v-tooltip v-if="detailItem.publicationDate" location="top" :text="formatDisplayDateTimeFull(detailItem.publicationDate)">
                 <template #activator="{ props: tipProps }">
-                  <span v-bind="tipProps">{{ formatLocaleDate(detailItem.publicationDate) }}</span>
+                  <span v-bind="tipProps">{{ formatDisplayDateOnly(detailItem.publicationDate) }}</span>
                 </template>
               </v-tooltip>
               <span v-else>—</span>
             </dd>
             <dt>createdAt</dt>
             <dd>
-              <v-tooltip v-if="detailItem.createdAt" location="top" :text="isoTooltip(detailItem.createdAt)">
+              <v-tooltip v-if="detailItem.createdAt" location="top" :text="formatDisplayDateTimeFull(detailItem.createdAt)">
                 <template #activator="{ props: tipProps }">
-                  <span v-bind="tipProps">{{ formatLocaleDate(detailItem.createdAt) }}</span>
+                  <span v-bind="tipProps">{{ formatDisplayDateTime(detailItem.createdAt) }}</span>
                 </template>
               </v-tooltip>
               <span v-else>—</span>
             </dd>
             <dt>updatedAt</dt>
             <dd>
-              <v-tooltip v-if="detailItem.updatedAt" location="top" :text="isoTooltip(detailItem.updatedAt)">
+              <v-tooltip v-if="detailItem.updatedAt" location="top" :text="formatDisplayDateTimeFull(detailItem.updatedAt)">
                 <template #activator="{ props: tipProps }">
-                  <span v-bind="tipProps">{{ formatLocaleDate(detailItem.updatedAt) }}</span>
+                  <span v-bind="tipProps">{{ formatDisplayDateTime(detailItem.updatedAt) }}</span>
                 </template>
               </v-tooltip>
               <span v-else>—</span>

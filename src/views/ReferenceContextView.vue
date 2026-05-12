@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { settingsHttp } from '@/api/http'
 import type { ReferenceContext, ReferenceContextPersisted } from '@/api/types'
+import { formatDisplayDateTime } from '@/utils/displayDateTime'
 import { computed, onMounted, ref } from 'vue'
 
 const contextText = ref('')
@@ -63,9 +64,9 @@ async function save() {
 
 const contextDateDisplay = computed(() => {
   const u = String(updatedAtDisplay.value ?? '').trim()
-  if (u && u !== '—') return u
+  if (u && u !== '—') return formatDisplayDateTime(u)
   const c = String(createdAtDisplay.value ?? '').trim()
-  if (c && c !== '—') return c
+  if (c && c !== '—') return formatDisplayDateTime(c)
   return '—'
 })
 

@@ -2,6 +2,7 @@
 import { settingsHttp } from '@/api/http'
 import { orchestratorErrorMessage, postEventQueue } from '@/api/orchestratorEvents'
 import type { SearchQueriesItem, SearchQueriesList } from '@/api/types'
+import { formatDisplayDateTime } from '@/utils/displayDateTime'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -267,7 +268,7 @@ const tableItems = computed(() =>
   items.value.map((r) => ({
     ...r,
     queryPreview: previewQueryCell(r.query),
-    dateDisplay: r.updatedAt?.trim() || r.createdAt?.trim() || '—',
+    dateDisplay: formatDisplayDateTime(r.updatedAt?.trim() || r.createdAt?.trim()),
   })),
 )
 
