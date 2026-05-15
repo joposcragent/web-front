@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { evaluatorHttp, jobPostingsHttp, settingsHttp } from '@/api/http'
-import { orchestratorErrorMessage, postEventQueue } from '@/api/orchestratorEvents'
+import { conductorErrorMessage, postEnqueueCollectionBatch } from '@/api/conductorEnqueue'
 import type {
   EvaluationStatus,
   JobPostingNotesPayload,
@@ -533,11 +533,11 @@ const collectBatchLoading = ref(false)
 async function runCollectBatch() {
   collectBatchLoading.value = true
   try {
-    await postEventQueue('collection-batch', {})
+    await postEnqueueCollectionBatch()
     snackbarText.value = 'Сбор вакансий поставлен в очередь'
     snackbar.value = true
   } catch (e) {
-    showError(orchestratorErrorMessage(e))
+    showError(conductorErrorMessage(e))
   } finally {
     collectBatchLoading.value = false
   }

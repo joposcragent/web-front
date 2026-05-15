@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { settingsHttp } from '@/api/http'
-import { orchestratorErrorMessage, postEventQueue } from '@/api/orchestratorEvents'
+import { conductorErrorMessage, postEnqueueCollectionQuery } from '@/api/conductorEnqueue'
 import type { SearchQueriesItem, SearchQueriesList } from '@/api/types'
 import { formatDisplayDateTime } from '@/utils/displayDateTime'
 import { computed, onMounted, ref } from 'vue'
@@ -275,16 +275,15 @@ const tableItems = computed(() =>
 async function runCollectForRow(item: SearchQueriesItem) {
   collectLoadingUuid.value = item.uuid
   try {
-    await postEventQueue('collection-query', {
-      name: item.name,
-      searchQuery: item.query,
-      searchQueryUuid: item.uuid,
-      lazy: item.isLazyScraping,
+    await postEnqueueCollectionQuery({
+      uuid: item.uuid,
+      query: item.query,
+      isLazyScraping: item.isLazyScraping,
     })
     snackbarText.value = 'Сбор поставлен в очередь'
     snackbar.value = true
   } catch (e) {
-    snackbarText.value = orchestratorErrorMessage(e)
+    snackbarText.value = conductorErrorMessage(e)
     snackbar.value = true
   } finally {
     collectLoadingUuid.value = null

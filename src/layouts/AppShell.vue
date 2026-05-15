@@ -21,8 +21,6 @@ function syncVuetifyTheme() {
 syncVuetifyTheme()
 watch(mode, syncVuetifyTheme)
 
-const flowerBaseUrl = computed(() => import.meta.env.VITE_FLOWER_BASE_URL ?? '')
-
 const { onResizePointerDown } = useNavResize()
 
 const navInlineStyle = computed(() => {
@@ -58,12 +56,6 @@ const buildFooterLine = computed(() => {
             <v-list-subheader class="text-body-1 font-weight-medium px-0 mb-1">Главная</v-list-subheader>
             <v-list-item to="/" title="Дашборд" rounded="lg" />
             <v-list-item to="/vacancies" title="Вакансии" rounded="lg" />
-            <v-list-item
-              v-if="flowerBaseUrl"
-              to="/orchestrator"
-              title="Оркестратор"
-              rounded="lg"
-            />
 
             <v-list-subheader class="text-body-1 font-weight-medium px-0 mb-1 mt-8">Настройки</v-list-subheader>
             <v-list-item

@@ -19,12 +19,6 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Вакансии' },
       },
       {
-        path: 'orchestrator',
-        name: 'orchestrator',
-        component: () => import('@/views/OrchestratorView.vue'),
-        meta: { title: 'Оркестратор' },
-      },
-      {
         path: 'settings',
         redirect: '/settings/reference-context',
       },

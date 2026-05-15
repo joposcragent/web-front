@@ -16,8 +16,16 @@ export const jobPostingsHttp = axios.create({
   baseURL: apiBase(import.meta.env.VITE_JOB_POSTINGS_CRUD_BASE_URL),
 })
 
-export const orchestratorHttp = axios.create({
-  baseURL: apiBase(import.meta.env.VITE_CELERY_ORCHESTRATOR_BASE_URL),
+/** Пустая `VITE_ORCHESTRATION_CONDUCTOR_BASE_URL` — same-origin, путь `/orchestration-conductor` (nginx / Vite proxy). */
+function conductorApiBase(): string {
+  const fromEnv = import.meta.env.VITE_ORCHESTRATION_CONDUCTOR_BASE_URL?.trim() ?? ''
+  if (fromEnv !== '')
+    return fromEnv.replace(/\/$/, '')
+  return '/orchestration-conductor'
+}
+
+export const conductorHttp = axios.create({
+  baseURL: conductorApiBase(),
 })
 
 export const evaluatorHttp = axios.create({

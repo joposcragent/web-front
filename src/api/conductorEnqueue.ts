@@ -1,18 +1,20 @@
 import { isAxiosError, type AxiosError } from 'axios'
 
-import { orchestratorHttp } from '@/api/http'
+import { conductorHttp } from '@/api/http'
 
-export async function postEventQueue(
-  eventName: string,
-  body: Record<string, unknown>,
-): Promise<void> {
-  await orchestratorHttp.post(
-    `/events-queue/${encodeURIComponent(eventName)}`,
-    body,
-  )
+export async function postEnqueueCollectionQuery(body: {
+  uuid: string
+  query: string
+  isLazyScraping: boolean
+}): Promise<void> {
+  await conductorHttp.post('/enqueue/collection-query', body)
 }
 
-export function orchestratorErrorMessage(err: unknown): string {
+export async function postEnqueueCollectionBatch(): Promise<void> {
+  await conductorHttp.post('/enqueue/collection-batch')
+}
+
+export function conductorErrorMessage(err: unknown): string {
   if (!isAxiosError(err)) return err instanceof Error ? err.message : 'Ошибка запроса'
   const ax = err as AxiosError<string | { detail?: unknown }>
   if (!ax.response) return ax.message || 'Ошибка сети'
