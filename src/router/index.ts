@@ -20,9 +20,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'scheduler',
-        name: 'scheduler',
-        component: () => import('@/views/SchedulerView.vue'),
-        meta: { title: 'Планировщик' },
+        redirect: '/settings/scheduler',
       },
       {
         path: 'settings',
@@ -45,6 +43,12 @@ const routes: RouteRecordRaw[] = [
         name: 'search-queries',
         component: () => import('@/views/SearchQueriesView.vue'),
         meta: { title: 'Поисковые запросы' },
+      },
+      {
+        path: 'settings/scheduler',
+        name: 'scheduler',
+        component: () => import('@/views/SchedulerView.vue'),
+        meta: { title: 'Планировщик' },
       },
     ],
   },

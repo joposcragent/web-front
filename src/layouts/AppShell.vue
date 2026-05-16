@@ -57,9 +57,6 @@ const buildFooterLine = computed(() => {
             <v-list-item to="/" title="Дашборд" rounded="lg" />
             <v-list-item to="/vacancies" title="Вакансии" rounded="lg" />
 
-            <v-list-subheader class="text-body-1 font-weight-medium px-0 mb-1 mt-8">Планировщик</v-list-subheader>
-            <v-list-item to="/scheduler" title="Планировщик" rounded="lg" />
-
             <v-list-subheader class="text-body-1 font-weight-medium px-0 mb-1 mt-8">Настройки</v-list-subheader>
             <v-list-item
               to="/settings/reference-context"
@@ -72,6 +69,7 @@ const buildFooterLine = computed(() => {
               rounded="lg"
             />
             <v-list-item to="/settings/search-queries" title="Поисковые запросы" rounded="lg" />
+            <v-list-item to="/settings/scheduler" title="Планировщик" rounded="lg" />
           </v-list>
         </aside>
 
