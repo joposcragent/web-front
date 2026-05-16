@@ -13,6 +13,8 @@ export default defineConfig(({ mode }) => {
   const crudTarget = env.VITE_DEV_PROXY_JOB_POSTINGS_CRUD ?? 'http://127.0.0.1:8081'
   const conductorTarget =
     env.VITE_DEV_PROXY_ORCHESTRATION_CONDUCTOR ?? 'http://127.0.0.1:8084'
+  const schedulerTarget =
+    env.VITE_DEV_PROXY_ORCHESTRATION_SCHEDULER ?? 'http://127.0.0.1:8083'
   const evaluatorTarget =
     env.VITE_DEV_PROXY_JOB_POSTINGS_EVALUATOR ?? 'http://127.0.0.1:8082'
   const gitCommit = env.VITE_GIT_COMMIT ?? process.env.VITE_GIT_COMMIT ?? ''
@@ -39,6 +41,7 @@ export default defineConfig(({ mode }) => {
         '/reference-context': { target: settingsTarget, changeOrigin: true },
         '/prompt-template': { target: settingsTarget, changeOrigin: true },
         '/orchestration-conductor': { target: conductorTarget, changeOrigin: true },
+        '/orchestration-scheduler': { target: schedulerTarget, changeOrigin: true },
         '/evaluate': { target: evaluatorTarget, changeOrigin: true },
       },
     },

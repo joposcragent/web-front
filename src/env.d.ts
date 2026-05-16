@@ -23,6 +23,11 @@ interface ImportMetaEnv {
    */
   readonly VITE_ORCHESTRATION_CONDUCTOR_BASE_URL?: string
   /**
+   * Базовый URL orchestration-scheduler (`/settings/...`, `/execute`).
+   * Пустая строка — same-origin, префикс `/orchestration-scheduler` (см. nginx.conf и vite.config).
+   */
+  readonly VITE_ORCHESTRATION_SCHEDULER_BASE_URL?: string
+  /**
    * Базовый URL страницы поиска hh.ru без завершающего `?`.
    * Полная ссылка в UI: `{VITE_HH_SEARCH_BASE_URL}?{query из БД}`.
    * Если не задано при сборке — в коде используется значение по умолчанию.
@@ -33,6 +38,7 @@ interface ImportMetaEnv {
   readonly VITE_DEV_PROXY_JOB_POSTINGS_CRUD?: string
   readonly VITE_DEV_PROXY_JOB_POSTINGS_EVALUATOR?: string
   readonly VITE_DEV_PROXY_ORCHESTRATION_CONDUCTOR?: string
+  readonly VITE_DEV_PROXY_ORCHESTRATION_SCHEDULER?: string
 }
 
 interface ImportMeta {

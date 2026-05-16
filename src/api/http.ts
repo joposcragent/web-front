@@ -28,6 +28,18 @@ export const conductorHttp = axios.create({
   baseURL: conductorApiBase(),
 })
 
+/** Пустая `VITE_ORCHESTRATION_SCHEDULER_BASE_URL` — same-origin, путь `/orchestration-scheduler` (nginx / Vite proxy). */
+function schedulerApiBase(): string {
+  const fromEnv = import.meta.env.VITE_ORCHESTRATION_SCHEDULER_BASE_URL?.trim() ?? ''
+  if (fromEnv !== '')
+    return fromEnv.replace(/\/$/, '')
+  return '/orchestration-scheduler'
+}
+
+export const schedulerHttp = axios.create({
+  baseURL: schedulerApiBase(),
+})
+
 export const evaluatorHttp = axios.create({
   baseURL: apiBase(import.meta.env.VITE_JOB_POSTINGS_EVALUATOR_BASE_URL),
 })

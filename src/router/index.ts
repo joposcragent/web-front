@@ -19,6 +19,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Вакансии' },
       },
       {
+        path: 'scheduler',
+        name: 'scheduler',
+        component: () => import('@/views/SchedulerView.vue'),
+        meta: { title: 'Планировщик' },
+      },
+      {
         path: 'settings',
         redirect: '/settings/reference-context',
       },
