@@ -8,7 +8,7 @@ type SchedulerJobTypeApi = 'COLLECTION_BATCH' | 'RETENTION'
 interface SchedulerSettingsItemApi {
   jobType: SchedulerJobTypeApi
   nextRun: string | null
-  cronExpression: string | null
+  interval: string | null
   previousRun: string | null
 }
 
@@ -39,7 +39,7 @@ const loading = ref(false)
 const pageError = ref<string | null>(null)
 
 const editNextOpen = ref(false)
-const editCronOpen = ref(false)
+const editIntervalOpen = ref(false)
 const confirmRunOpen = ref(false)
 const modalError = ref<string | null>(null)
 const saving = ref(false)
@@ -47,14 +47,14 @@ const running = ref(false)
 
 const activeJob = ref<SchedulerJobTypeApi | null>(null)
 const draftNextRun = ref('')
-const draftCron = ref('')
+const draftInterval = ref('')
 
 const headers = computed(() => [
   { title: 'Джоб', key: 'jobType', sortable: false },
   { title: '', key: 'run', sortable: false, width: 56 },
   { title: 'Последний запуск', key: 'previousRun', sortable: false },
   { title: 'Следующий запуск', key: 'nextRun', sortable: false },
-  { title: 'Расписание', key: 'cronExpression', sortable: false },
+  { title: 'Интервал', key: 'interval', sortable: false },
 ])
 
 async function loadList() {
@@ -83,11 +83,11 @@ function openEditNext(job: SchedulerJobTypeApi, current: string | null) {
   editNextOpen.value = true
 }
 
-function openEditCron(job: SchedulerJobTypeApi, current: string | null) {
+function openEditInterval(job: SchedulerJobTypeApi, current: string | null) {
   activeJob.value = job
-  draftCron.value = current ?? ''
+  draftInterval.value = current ?? ''
   modalError.value = null
-  editCronOpen.value = true
+  editIntervalOpen.value = true
 }
 
 function openConfirmRun(job: SchedulerJobTypeApi) {
@@ -100,8 +100,8 @@ function closeEditNext() {
   editNextOpen.value = false
 }
 
-function closeEditCron() {
-  editCronOpen.value = false
+function closeEditInterval() {
+  editIntervalOpen.value = false
 }
 
 function closeConfirmRun() {
@@ -129,7 +129,7 @@ async function saveNextRun() {
   }
 }
 
-async function saveCron() {
+async function saveInterval() {
   const job = activeJob.value
   if (job == null)
     return
@@ -137,11 +137,11 @@ async function saveCron() {
   modalError.value = null
   try {
     await schedulerHttp.put(
-      'settings/cron-expression',
-      { value: draftCron.value },
+      'settings/interval',
+      { value: draftInterval.value },
       { params: { jobType: job } },
     )
-    closeEditCron()
+    closeEditInterval()
     await loadList()
   } catch (e) {
     modalError.value = axiosErrorMessage(e)
@@ -214,13 +214,13 @@ onMounted(loadList)
           {{ cellText(item.nextRun) }}
         </button>
       </template>
-      <template #item.cronExpression="{ item }">
+      <template #item.interval="{ item }">
         <button
           type="button"
           class="link-like text-body-2 font-mono"
-          @click="openEditCron(item.jobType, item.cronExpression)"
+          @click="openEditInterval(item.jobType, item.interval)"
         >
-          {{ cellText(item.cronExpression) }}
+          {{ cellText(item.interval) }}
         </button>
       </template>
     </v-data-table>
@@ -255,9 +255,9 @@ onMounted(loadList)
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="editCronOpen" max-width="520" @keydown.esc="closeEditCron">
+    <v-dialog v-model="editIntervalOpen" max-width="520" @keydown.esc="closeEditInterval">
       <v-card>
-        <v-card-title>Расписание (cron)</v-card-title>
+        <v-card-title>Интервал между запусками</v-card-title>
         <v-card-text>
           <p v-if="modalError" class="text-error mb-2">
             {{ modalError }}
@@ -265,9 +265,12 @@ onMounted(loadList)
           <p class="text-body-2 text-medium-emphasis mb-2">
             Тип: <span class="font-mono">{{ activeJob }}</span>
           </p>
+          <p class="text-body-2 text-medium-emphasis mb-3">
+            Формат ISO-8601 duration, например <span class="font-mono">PT1H</span> (час) или <span class="font-mono">PT6H</span> (шесть часов).
+          </p>
           <v-text-field
-            v-model="draftCron"
-            label="Cron"
+            v-model="draftInterval"
+            label="Интервал (duration)"
             variant="outlined"
             density="comfortable"
             hide-details="auto"
@@ -276,10 +279,10 @@ onMounted(loadList)
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="closeEditCron">
+          <v-btn variant="text" @click="closeEditInterval">
             Отмена
           </v-btn>
-          <v-btn color="primary" :loading="saving" @click="saveCron">
+          <v-btn color="primary" :loading="saving" @click="saveInterval">
             Сохранить
           </v-btn>
         </v-card-actions>
