@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AxiosError } from 'axios'
 import { schedulerHttp } from '@/api/http'
+import { formatDisplayDateTime, formatDisplayDateTimeFull } from '@/utils/displayDateTime'
 import { computed, onMounted, ref } from 'vue'
 
 type SchedulerJobTypeApi = 'COLLECTION_BATCH' | 'RETENTION'
@@ -20,6 +21,19 @@ function cellText(v: string | null): string {
   if (v == null)
     return 'null'
   return v
+}
+
+/** `previousRun` / `nextRun` in table: client locale and time zone; API `null` → literal `null`. */
+function displaySchedulerInstant(iso: string | null): string {
+  if (iso == null)
+    return 'null'
+  return formatDisplayDateTime(iso)
+}
+
+function schedulerInstantTitle(iso: string | null): string | undefined {
+  if (iso == null)
+    return undefined
+  return formatDisplayDateTimeFull(iso)
 }
 
 function axiosErrorMessage(err: unknown): string {
@@ -203,15 +217,18 @@ onMounted(loadList)
         </v-btn>
       </template>
       <template #item.previousRun="{ item }">
-        <span class="text-body-2">{{ cellText(item.previousRun) }}</span>
+        <span class="text-body-2" :title="schedulerInstantTitle(item.previousRun)">
+          {{ displaySchedulerInstant(item.previousRun) }}
+        </span>
       </template>
       <template #item.nextRun="{ item }">
         <button
           type="button"
           class="link-like text-body-2"
+          :title="schedulerInstantTitle(item.nextRun)"
           @click="openEditNext(item.jobType, item.nextRun)"
         >
-          {{ cellText(item.nextRun) }}
+          {{ displaySchedulerInstant(item.nextRun) }}
         </button>
       </template>
       <template #item.interval="{ item }">
