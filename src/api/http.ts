@@ -40,6 +40,18 @@ export const schedulerHttp = axios.create({
   baseURL: schedulerApiBase(),
 })
 
+/** Пустая `VITE_ORCHESTRATION_ASYNC_JOBS_CRUD_BASE_URL` — same-origin, путь `/orchestration-async-jobs-crud` (nginx / Vite proxy). */
+function asyncJobsApiBase(): string {
+  const fromEnv = import.meta.env.VITE_ORCHESTRATION_ASYNC_JOBS_CRUD_BASE_URL?.trim() ?? ''
+  if (fromEnv !== '')
+    return fromEnv.replace(/\/$/, '')
+  return '/orchestration-async-jobs-crud'
+}
+
+export const asyncJobsHttp = axios.create({
+  baseURL: asyncJobsApiBase(),
+})
+
 export const evaluatorHttp = axios.create({
   baseURL: apiBase(import.meta.env.VITE_JOB_POSTINGS_EVALUATOR_BASE_URL),
 })

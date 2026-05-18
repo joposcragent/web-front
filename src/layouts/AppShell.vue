@@ -56,6 +56,7 @@ const buildFooterLine = computed(() => {
             <v-list-subheader class="text-body-1 font-weight-medium px-0 mb-1">Главная</v-list-subheader>
             <v-list-item to="/" title="Дашборд" rounded="lg" />
             <v-list-item to="/vacancies" title="Вакансии" rounded="lg" />
+            <v-list-item to="/orchestrator/async-jobs" title="Оркестратор" rounded="lg" />
 
             <v-list-subheader class="text-body-1 font-weight-medium px-0 mb-1 mt-8">Настройки</v-list-subheader>
             <v-list-item

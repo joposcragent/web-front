@@ -19,6 +19,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Вакансии' },
       },
       {
+        path: 'orchestrator/async-jobs',
+        name: 'orchestrator-async-jobs',
+        component: () => import('@/views/OrchestratorAsyncJobsView.vue'),
+        meta: { title: 'Оркестратор' },
+      },
+      {
         path: 'scheduler',
         redirect: '/settings/scheduler',
       },

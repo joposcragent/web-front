@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { evaluatorHttp, jobPostingsHttp, settingsHttp } from '@/api/http'
+import { asyncJobsHttp, evaluatorHttp, jobPostingsHttp, settingsHttp } from '@/api/http'
 import { conductorErrorMessage, postEnqueueCollectionBatch } from '@/api/conductorEnqueue'
 import type {
+  AsyncJobItemDto,
+  AsyncJobStatusDto,
   EvaluationStatus,
   JobPostingNotesPayload,
   JobPostingsItem,
   JobPostingsList,
+  LastRootJobsStatusListDto,
   PromptTemplate,
   ReferenceContext,
   ResponseStatus,
@@ -61,6 +64,79 @@ const RESPONSE_FILTER_OPTS: { title: string; value: string }[] = [
 ]
 
 const PER_PAGE = [10, 30, 50, 80, 130] as const
+
+function jsonPreviewCell(v: unknown, max = 96): string {
+  if (v == null) return 'null'
+  try {
+    const s = JSON.stringify(v)
+    return s.length > max ? `${s.slice(0, max)}…` : s
+  } catch {
+    return '…'
+  }
+}
+
+function resultPreviewCell(s: string | null | undefined, max = 96): string {
+  if (s == null || s === '') return 'null'
+  return s.length > max ? `${s.slice(0, max)}…` : s
+}
+
+function orchestratorJobLink(item: AsyncJobItemDto) {
+  return {
+    name: 'orchestrator-async-jobs' as const,
+    query: { jobUuid: item.uuid, openDetail: '1' },
+  }
+}
+
+function asyncJobStatusClass(status: AsyncJobStatusDto): string {
+  switch (status) {
+    case 'STARTED':
+      return 'text-primary'
+    case 'SUCCEEDED':
+      return 'text-success'
+    case 'FAILED':
+      return 'text-error'
+    case 'CANCELED':
+      return 'text-medium-emphasis'
+    default:
+      return ''
+  }
+}
+
+const lastRootJobHeaders: { title: string; key: string; sortable: boolean; width?: number }[] = [
+  { title: 'Джоб', key: 'name', sortable: false },
+  { title: 'Родитель', key: 'parentUuid', sortable: false },
+  { title: 'Статус', key: 'status', sortable: false, width: 120 },
+  { title: 'Начало', key: 'started_at', sortable: false },
+  { title: 'Окончание', key: 'finished_at', sortable: false },
+  { title: 'Результат', key: 'result', sortable: false },
+  { title: 'Контекст', key: 'context', sortable: false },
+]
+
+const rootJobs = ref<AsyncJobItemDto[]>([])
+const rootJobsLoading = ref(false)
+const rootJobsError = ref<string | null>(null)
+
+async function fetchLastRootJobs() {
+  rootJobsLoading.value = true
+  rootJobsError.value = null
+  try {
+    const { data } = await asyncJobsHttp.get<LastRootJobsStatusListDto>('/async-jobs/last-root-status')
+    rootJobs.value = Array.isArray(data.list) ? data.list : []
+  } catch (e: unknown) {
+    rootJobs.value = []
+    rootJobsError.value = e instanceof Error ? e.message : 'Ошибка загрузки'
+  } finally {
+    rootJobsLoading.value = false
+  }
+}
+
+watch(
+  () => props.preset,
+  (p) => {
+    if (p === 'dashboard') void fetchLastRootJobs()
+  },
+  { immediate: true },
+)
 
 type TableHeaderRow = { title: string; key: string; sortable: boolean; width?: number }
 
@@ -832,6 +908,112 @@ function contentVectorSummary(v: number[] | null | undefined): string {
         <span v-else>—</span>
       </template>
     </v-data-table-server>
+
+    <div v-if="preset === 'dashboard'" class="mt-8">
+      <h2 class="text-h6 font-weight-regular mb-3">Последние джобы сбора вакансий</h2>
+      <v-progress-linear v-if="rootJobsLoading" indeterminate color="primary" class="mb-2" />
+      <v-alert
+        v-if="rootJobsError"
+        type="error"
+        variant="tonal"
+        class="mb-3"
+        closable
+        @click:close="rootJobsError = null"
+      >
+        {{ rootJobsError }}
+      </v-alert>
+      <v-data-table
+        v-else-if="!rootJobsLoading"
+        :headers="lastRootJobHeaders"
+        :items="rootJobs"
+        item-value="uuid"
+        :items-per-page="-1"
+        hide-default-footer
+        density="compact"
+        class="elevation-0 border rounded-lg last-root-jobs-table"
+      >
+        <template #no-data>
+          <div class="py-6 text-medium-emphasis text-body-2">Нет данных</div>
+        </template>
+        <template #item.name="{ item }">
+          <RouterLink
+            :to="orchestratorJobLink(item)"
+            class="text-primary text-decoration-none text-body-2 d-block text-truncate"
+          >
+            {{ item.name }}
+          </RouterLink>
+        </template>
+        <template #item.parentUuid="{ item }">
+          <RouterLink
+            :to="orchestratorJobLink(item)"
+            class="text-primary text-decoration-none text-body-2 d-block text-truncate"
+          >
+            {{ item.parentUuid ?? '—' }}
+          </RouterLink>
+        </template>
+        <template #item.status="{ item }">
+          <RouterLink
+            :to="orchestratorJobLink(item)"
+            class="text-decoration-none text-body-2 d-block text-truncate"
+            :class="asyncJobStatusClass(item.status)"
+          >
+            {{ item.status }}
+          </RouterLink>
+        </template>
+        <template #item.started_at="{ item }">
+          <RouterLink
+            :to="orchestratorJobLink(item)"
+            class="text-primary text-decoration-none text-body-2 d-block text-truncate"
+          >
+            <v-tooltip
+              v-if="item.started_at"
+              location="top"
+              :text="formatDisplayDateTimeFull(item.started_at)"
+            >
+              <template #activator="{ props: tipProps }">
+                <span v-bind="tipProps">{{ formatDisplayDateTime(item.started_at) }}</span>
+              </template>
+            </v-tooltip>
+            <span v-else>—</span>
+          </RouterLink>
+        </template>
+        <template #item.finished_at="{ item }">
+          <RouterLink
+            :to="orchestratorJobLink(item)"
+            class="text-primary text-decoration-none text-body-2 d-block text-truncate"
+          >
+            <v-tooltip
+              v-if="item.finished_at"
+              location="top"
+              :text="formatDisplayDateTimeFull(item.finished_at)"
+            >
+              <template #activator="{ props: tipProps }">
+                <span v-bind="tipProps">{{ formatDisplayDateTime(item.finished_at) }}</span>
+              </template>
+            </v-tooltip>
+            <span v-else>—</span>
+          </RouterLink>
+        </template>
+        <template #item.result="{ item }">
+          <RouterLink
+            :to="orchestratorJobLink(item)"
+            class="text-primary text-decoration-none text-body-2 d-block text-truncate"
+            :title="item.result ?? undefined"
+          >
+            {{ resultPreviewCell(item.result) }}
+          </RouterLink>
+        </template>
+        <template #item.context="{ item }">
+          <RouterLink
+            :to="orchestratorJobLink(item)"
+            class="text-primary text-decoration-none text-body-2 d-block text-truncate"
+            :title="jsonPreviewCell(item.context)"
+          >
+            {{ jsonPreviewCell(item.context) }}
+          </RouterLink>
+        </template>
+      </v-data-table>
+    </div>
 
     <div v-if="preset === 'dashboard'" class="mt-4">
       <v-btn

@@ -62,3 +62,34 @@ export interface SearchQueriesItem {
 }
 
 export type SearchQueriesList = SearchQueriesItem[]
+
+export type AsyncJobStatusDto = 'STARTED' | 'SUCCEEDED' | 'FAILED' | 'CANCELED'
+
+/** Элемент `GET /async-jobs/list` (ключи дат как в JSON API). */
+export interface AsyncJobItemDto {
+  uuid: string
+  name: string
+  parentUuid?: string | null
+  status: AsyncJobStatusDto
+  context?: Record<string, unknown> | null
+  result?: string | null
+  started_at: string
+  updated_at?: string | null
+  finished_at?: string | null
+}
+
+export interface AsyncJobListDto {
+  list: AsyncJobItemDto[]
+  total: number
+}
+
+/** Ответ `GET /async-jobs/last-root-status`. */
+export interface LastRootJobsStatusListDto {
+  list: AsyncJobItemDto[]
+}
+
+/** Ответ `GET /async-jobs/{jobUuid}/list/related`. */
+export interface RelatedEntitiesUuidsListDto {
+  jobPostingsList: string[]
+  searchQueriesList: string[]
+}
