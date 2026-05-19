@@ -1,187 +1,155 @@
 <script setup lang="ts">
-import type { AxiosError } from 'axios'
-import { schedulerHttp } from '@/api/http'
-import { formatDisplayDateTime, formatDisplayDateTimeFull } from '@/utils/displayDateTime'
-import { computed, onMounted, ref } from 'vue'
-
-type SchedulerJobTypeApi = 'COLLECTION_BATCH' | 'RETENTION'
-
-interface SchedulerSettingsItemApi {
-  jobType: SchedulerJobTypeApi
-  nextRun: string | null
-  interval: string | null
-  previousRun: string | null
-}
-
-interface SchedulerSettingsListApi {
-  list: SchedulerSettingsItemApi[] | null
-}
+import type { SchedulerJobType, SchedulerSettingsItemDto } from "@/api/types";
+import {
+  listSchedulerSettings,
+  runSchedulerJob,
+  updateSchedulerInterval,
+  updateSchedulerNextRun,
+} from "@/features/scheduler/api/schedulerApi";
+import { mapApiError } from "@/shared/api/mapApiError";
+import {
+  formatDisplayDateTime,
+  formatDisplayDateTimeFull,
+} from "@/utils/displayDateTime";
+import { computed, onMounted, ref } from "vue";
 
 function cellText(v: string | null): string {
-  if (v == null)
-    return 'null'
-  return v
+  if (v == null) return "null";
+  return v;
 }
 
 /** `previousRun` / `nextRun` in table: client locale and time zone; API `null` → literal `null`. */
 function displaySchedulerInstant(iso: string | null): string {
-  if (iso == null)
-    return 'null'
-  return formatDisplayDateTime(iso)
+  if (iso == null) return "null";
+  return formatDisplayDateTime(iso);
 }
 
 function schedulerInstantTitle(iso: string | null): string | undefined {
-  if (iso == null)
-    return undefined
-  return formatDisplayDateTimeFull(iso)
+  if (iso == null) return undefined;
+  return formatDisplayDateTimeFull(iso);
 }
 
-function axiosErrorMessage(err: unknown): string {
-  if (typeof err === 'object' && err != null && 'isAxiosError' in err && (err as AxiosError).isAxiosError) {
-    const ax = err as AxiosError<string>
-    const d = ax.response?.data
-    if (typeof d === 'string' && d.trim() !== '')
-      return d.trim()
-    if (ax.message)
-      return ax.message
-  }
-  return 'Ошибка сети или сервера'
-}
+const rows = ref<SchedulerSettingsItemDto[]>([]);
+const loading = ref(false);
+const pageError = ref<string | null>(null);
 
-const rows = ref<SchedulerSettingsItemApi[]>([])
-const loading = ref(false)
-const pageError = ref<string | null>(null)
+const editNextOpen = ref(false);
+const editIntervalOpen = ref(false);
+const confirmRunOpen = ref(false);
+const modalError = ref<string | null>(null);
+const saving = ref(false);
+const running = ref(false);
 
-const editNextOpen = ref(false)
-const editIntervalOpen = ref(false)
-const confirmRunOpen = ref(false)
-const modalError = ref<string | null>(null)
-const saving = ref(false)
-const running = ref(false)
-
-const activeJob = ref<SchedulerJobTypeApi | null>(null)
-const draftNextRun = ref('')
-const draftInterval = ref('')
+const activeJob = ref<SchedulerJobType | null>(null);
+const draftNextRun = ref("");
+const draftInterval = ref("");
 
 const headers = computed(() => [
-  { title: 'Джоб', key: 'jobType', sortable: false },
-  { title: '', key: 'run', sortable: false, width: 56 },
-  { title: 'Последний запуск', key: 'previousRun', sortable: false },
-  { title: 'Следующий запуск', key: 'nextRun', sortable: false },
-  { title: 'Интервал', key: 'interval', sortable: false },
-])
+  { title: "Джоб", key: "jobType", sortable: false },
+  { title: "", key: "run", sortable: false, width: 56 },
+  { title: "Последний запуск", key: "previousRun", sortable: false },
+  { title: "Следующий запуск", key: "nextRun", sortable: false },
+  { title: "Интервал", key: "interval", sortable: false },
+]);
 
 async function loadList() {
-  loading.value = true
-  pageError.value = null
+  loading.value = true;
+  pageError.value = null;
   try {
-    const res = await schedulerHttp.get<SchedulerSettingsListApi>('settings/list', {
-      validateStatus: s => s === 200 || s === 500,
-    })
+    const res = await listSchedulerSettings();
     if (res.status === 500) {
-      pageError.value = 'Не удалось загрузить настройки планировщика'
-      return
+      pageError.value = "Не удалось загрузить настройки планировщика";
+      return;
     }
-    rows.value = res.data.list ?? []
+    rows.value = res.data.list ?? [];
   } catch {
-    pageError.value = 'Ошибка сети'
+    pageError.value = "Ошибка сети";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-function openEditNext(job: SchedulerJobTypeApi, current: string | null) {
-  activeJob.value = job
-  draftNextRun.value = current ?? ''
-  modalError.value = null
-  editNextOpen.value = true
+function openEditNext(job: SchedulerJobType, current: string | null) {
+  activeJob.value = job;
+  draftNextRun.value = current ?? "";
+  modalError.value = null;
+  editNextOpen.value = true;
 }
 
-function openEditInterval(job: SchedulerJobTypeApi, current: string | null) {
-  activeJob.value = job
-  draftInterval.value = current ?? ''
-  modalError.value = null
-  editIntervalOpen.value = true
+function openEditInterval(job: SchedulerJobType, current: string | null) {
+  activeJob.value = job;
+  draftInterval.value = current ?? "";
+  modalError.value = null;
+  editIntervalOpen.value = true;
 }
 
-function openConfirmRun(job: SchedulerJobTypeApi) {
-  activeJob.value = job
-  modalError.value = null
-  confirmRunOpen.value = true
+function openConfirmRun(job: SchedulerJobType) {
+  activeJob.value = job;
+  modalError.value = null;
+  confirmRunOpen.value = true;
 }
 
 function closeEditNext() {
-  editNextOpen.value = false
+  editNextOpen.value = false;
 }
 
 function closeEditInterval() {
-  editIntervalOpen.value = false
+  editIntervalOpen.value = false;
 }
 
 function closeConfirmRun() {
-  confirmRunOpen.value = false
+  confirmRunOpen.value = false;
 }
 
 async function saveNextRun() {
-  const job = activeJob.value
-  if (job == null)
-    return
-  saving.value = true
-  modalError.value = null
+  const job = activeJob.value;
+  if (job == null) return;
+  saving.value = true;
+  modalError.value = null;
   try {
-    await schedulerHttp.put(
-      'settings/next-run',
-      { value: draftNextRun.value },
-      { params: { jobType: job } },
-    )
-    closeEditNext()
-    await loadList()
+    await updateSchedulerNextRun(job, draftNextRun.value);
+    closeEditNext();
+    await loadList();
   } catch (e) {
-    modalError.value = axiosErrorMessage(e)
+    modalError.value = mapApiError(e);
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 
 async function saveInterval() {
-  const job = activeJob.value
-  if (job == null)
-    return
-  saving.value = true
-  modalError.value = null
+  const job = activeJob.value;
+  if (job == null) return;
+  saving.value = true;
+  modalError.value = null;
   try {
-    await schedulerHttp.put(
-      'settings/interval',
-      { value: draftInterval.value },
-      { params: { jobType: job } },
-    )
-    closeEditInterval()
-    await loadList()
+    await updateSchedulerInterval(job, draftInterval.value);
+    closeEditInterval();
+    await loadList();
   } catch (e) {
-    modalError.value = axiosErrorMessage(e)
+    modalError.value = mapApiError(e);
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 
 async function confirmExecute() {
-  const job = activeJob.value
-  if (job == null)
-    return
-  running.value = true
-  modalError.value = null
+  const job = activeJob.value;
+  if (job == null) return;
+  running.value = true;
+  modalError.value = null;
   try {
-    await schedulerHttp.post('execute', undefined, { params: { jobType: job } })
-    closeConfirmRun()
-    await loadList()
+    await runSchedulerJob(job);
+    closeConfirmRun();
+    await loadList();
   } catch (e) {
-    modalError.value = axiosErrorMessage(e)
+    modalError.value = mapApiError(e);
   } finally {
-    running.value = false
+    running.value = false;
   }
 }
 
-onMounted(loadList)
+onMounted(loadList);
 </script>
 
 <template>
@@ -217,7 +185,10 @@ onMounted(loadList)
         </v-btn>
       </template>
       <template #item.previousRun="{ item }">
-        <span class="text-body-2" :title="schedulerInstantTitle(item.previousRun)">
+        <span
+          class="text-body-2"
+          :title="schedulerInstantTitle(item.previousRun)"
+        >
           {{ displaySchedulerInstant(item.previousRun) }}
         </span>
       </template>
@@ -242,7 +213,11 @@ onMounted(loadList)
       </template>
     </v-data-table>
 
-    <v-dialog v-model="editNextOpen" max-width="520" @keydown.esc="closeEditNext">
+    <v-dialog
+      v-model="editNextOpen"
+      max-width="520"
+      @keydown.esc="closeEditNext"
+    >
       <v-card>
         <v-card-title>Следующий запуск</v-card-title>
         <v-card-text>
@@ -262,9 +237,7 @@ onMounted(loadList)
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="closeEditNext">
-            Отмена
-          </v-btn>
+          <v-btn variant="text" @click="closeEditNext"> Отмена </v-btn>
           <v-btn color="primary" :loading="saving" @click="saveNextRun">
             Сохранить
           </v-btn>
@@ -272,7 +245,11 @@ onMounted(loadList)
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="editIntervalOpen" max-width="520" @keydown.esc="closeEditInterval">
+    <v-dialog
+      v-model="editIntervalOpen"
+      max-width="520"
+      @keydown.esc="closeEditInterval"
+    >
       <v-card>
         <v-card-title>Интервал между запусками</v-card-title>
         <v-card-text>
@@ -283,7 +260,9 @@ onMounted(loadList)
             Тип: <span class="font-mono">{{ activeJob }}</span>
           </p>
           <p class="text-body-2 text-medium-emphasis mb-3">
-            Формат ISO-8601 duration, например <span class="font-mono">PT1H</span> (час) или <span class="font-mono">PT6H</span> (шесть часов).
+            Формат ISO-8601 duration, например
+            <span class="font-mono">PT1H</span> (час) или
+            <span class="font-mono">PT6H</span> (шесть часов).
           </p>
           <v-text-field
             v-model="draftInterval"
@@ -296,9 +275,7 @@ onMounted(loadList)
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="closeEditInterval">
-            Отмена
-          </v-btn>
+          <v-btn variant="text" @click="closeEditInterval"> Отмена </v-btn>
           <v-btn color="primary" :loading="saving" @click="saveInterval">
             Сохранить
           </v-btn>
@@ -306,7 +283,11 @@ onMounted(loadList)
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="confirmRunOpen" max-width="480" @keydown.esc="closeConfirmRun">
+    <v-dialog
+      v-model="confirmRunOpen"
+      max-width="480"
+      @keydown.esc="closeConfirmRun"
+    >
       <v-card>
         <v-card-title>Подтверждение</v-card-title>
         <v-card-text>
@@ -322,9 +303,7 @@ onMounted(loadList)
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="closeConfirmRun">
-            Нет
-          </v-btn>
+          <v-btn variant="text" @click="closeConfirmRun"> Нет </v-btn>
           <v-btn color="primary" :loading="running" @click="confirmExecute">
             Да
           </v-btn>
